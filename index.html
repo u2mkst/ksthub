@@ -55,6 +55,7 @@ input, button {
   margin-top:10px;
   border-radius:14px;
   border:1px solid #ddd;
+  box-sizing:border-box; /* ⭐ 이거 추가 */
 }
 
 button {
@@ -144,25 +145,25 @@ import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/1
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDa50OQMq30K_6IcA-fm0IAUO8S8UYXe3E",
-  authDomain: "ksthub-4840e.firebaseapp.com",
-  projectId: "ksthub-4840e",
-  storageBucket: "ksthub-4840e.firebasestorage.app",
-  messagingSenderId: "688445578736",
-  appId: "1:688445578736:web:6f1e29e1f3bae31c215135",
-  measurementId: "G-VL8CNHLPL0"
+  apiKey: "여기",
+  authDomain: "여기",
+  databaseURL: "여기",
+  projectId: "여기",
+  messagingSenderId: "여기",
+  appId: "여기"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const messaging = getMessaging(app);
 
-const API_KEY = "19f78fd07bfb4243a6333e7bf4641bfc";
+const API_KEY = "여기";
 
 let currentUser = localStorage.getItem("user");
 let userData = null;
 let schoolCode="", atpt="";
 
+// 🔔 알림 권한 요청
 if(location.protocol !== "file:"){
   requestPermission();
 }
@@ -173,10 +174,10 @@ async function requestPermission(){
     if(permission !== "granted") return;
 
     const token = await getToken(messaging,{
-      vapidKey:"BBy2KlFgNR2qmtS_1-EvtW9ClWEgk98RR4wfPRrIg7IuSo1n2A5xNhheQev_FBd-egHRjplo3cW9Gcyf95pnfd0"
+      vapidKey:"여기"
     });
 
-    console.log("토큰:",token);
+    console.log("FCM 토큰:",token);
 
     if(token && currentUser){
       await set(ref(db,"tokens/"+currentUser),{
@@ -189,10 +190,12 @@ async function requestPermission(){
   }
 }
 
+// 🔔 포그라운드 알림
 onMessage(messaging,(payload)=>{
-  alert(payload.notification.title+"\n"+payload.notification.body);
+  alert(payload.notification.title + "\n" + payload.notification.body);
 });
 
+// 🔐 자동 로그인
 if(currentUser) autoLogin();
 
 async function autoLogin(){
@@ -200,8 +203,9 @@ async function autoLogin(){
   if(snap.exists()){ userData=snap.val(); showMain(); }
 }
 
+// 🔐 로그인
 window.login = async function(){
-  const id = userId.value;
+  const id = document.getElementById("userId").value;
   if(!/^ufes\d+$/.test(id)) return alert("형식 오류");
 
   currentUser=id;
@@ -209,23 +213,29 @@ window.login = async function(){
 
   const snap = await get(ref(db,"users/"+id));
   if(snap.exists()){ userData=snap.val(); showMain(); }
-  else { loginPage.style.display="none"; setupPage.style.display="block"; }
+  else {
+    document.getElementById("loginPage").style.display="none";
+    document.getElementById("setupPage").style.display="block";
+  }
 }
 
+// 🔍 학교 검색
 window.searchSchool = async function(){
-  const q = schoolInput.value;
+  const q = document.getElementById("schoolInput").value;
   if(q.length<2) return;
 
-  const res = await fetch(`https://open.neis.go.kr/hub/schoolInfo?KEY=${API_KEY}&Type=json&Type=json&SCHUL_NM=${q}`);
+  const res = await fetch(`https://open.neis.go.kr/hub/schoolInfo?KEY=${API_KEY}&Type=json&SCHUL_NM=${q}`);
   const data = await res.json();
   const list = data.schoolInfo?.[1]?.row || [];
 
+  const schoolList = document.getElementById("schoolList");
   schoolList.innerHTML="";
+
   list.forEach(s=>{
     const div=document.createElement("div");
     div.innerText=s.SCHUL_NM;
     div.onclick=()=>{
-      schoolInput.value=s.SCHUL_NM;
+      document.getElementById("schoolInput").value=s.SCHUL_NM;
       schoolCode=s.SD_SCHUL_CODE;
       atpt=s.ATPT_OFCDC_SC_CODE;
       schoolList.innerHTML="";
@@ -234,48 +244,63 @@ window.searchSchool = async function(){
   });
 }
 
+// 💾 저장
 window.saveInfo = async function(){
   const grade=document.getElementById("grade").value;
-const classN=document.getElementById("class").value;
+  const classN=document.getElementById("class").value;
 
   await set(ref(db,"users/"+currentUser),{schoolCode,atpt,grade,classN});
   userData={schoolCode,atpt,grade,classN};
   showMain();
 }
 
+// 📱 화면 전환
 function showMain(){
-  loginPage.style.display="none";
-  setupPage.style.display="none";
-  mainPage.style.display="block";
-  loadMeal(); loadTime();
+  document.getElementById("loginPage").style.display="none";
+  document.getElementById("setupPage").style.display="none";
+  document.getElementById("mainPage").style.display="block";
+  loadMeal();
+  loadTime();
 }
 
-function today(){return new Date().toISOString().slice(0,10).replace(/-/g,'');}
+// 📅 날짜
+function today(){
+  return new Date().toISOString().slice(0,10).replace(/-/g,'');
+}
 
+// 🍽 급식
 async function loadMeal(){
-  const res = await fetch(`https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${API_KEY}&ATPT_OFCDC_SC_CODE=${userData.atpt}&SD_SCHUL_CODE=${userData.schoolCode}&MLSV_YMD=${today()}`);
+  const res = await fetch(`https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${userData.atpt}&SD_SCHUL_CODE=${userData.schoolCode}&MLSV_YMD=${today()}`);
   const data = await res.json();
+
   const meal=data.mealServiceDietInfo?.[1]?.row?.[0]?.DDISH_NM;
-  mealEl.innerHTML=meal?meal.replace(/<br\/>/g,'<br>'):"없음";
+  document.getElementById("meal").innerHTML =
+    meal ? meal.replace(/<br\/>/g,'<br>') : "없음";
 }
 
+// 📚 시간표
 async function loadTime(){
-  const res = await fetch(`https://open.neis.go.kr/hub/hisTimetable?KEY=${API_KEY}&ATPT_OFCDC_SC_CODE=${userData.atpt}&SD_SCHUL_CODE=${userData.schoolCode}&GRADE=${userData.grade}&CLASS_NM=${userData.classN}&ALL_TI_YMD=${today()}`);
+  const res = await fetch(`https://open.neis.go.kr/hub/hisTimetable?KEY=${API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${userData.atpt}&SD_SCHUL_CODE=${userData.schoolCode}&GRADE=${userData.grade}&CLASS_NM=${userData.classN}&ALL_TI_YMD=${today()}`);
   const data = await res.json();
+
   const rows=data.hisTimetable?.[1]?.row;
+  if(!rows){
+    document.getElementById("time").innerHTML="없음";
+    return;
+  }
 
-  if(!rows){ timeEl.innerHTML="없음"; return; }
-
-  timeEl.innerHTML = rows.map(r=>
-    `<div class="period">${r.PERIO}교시<br>${r.ITRT_CNTNT}</div>`
-  ).join('');
+  document.getElementById("time").innerHTML =
+    rows.map(r=>`<div class="period">${r.PERIO}교시<br>${r.ITRT_CNTNT}</div>`).join('');
 }
 
-window.go=(url)=>window.open(url);
-window.toggleDark=()=>document.body.classList.toggle("dark");
+// 🌙 다크모드
+window.toggleDark = ()=> document.body.classList.toggle("dark");
 
-const mealEl=document.getElementById("meal");
-const timeEl=document.getElementById("time");
+// 🔗 링크
+window.go = (url)=> window.open(url);
+
+// ✅ 로그인 버튼 연결 (맨 아래!)
+document.getElementById("loginBtn")?.addEventListener("click", login);
 </script>
 
 </body>
