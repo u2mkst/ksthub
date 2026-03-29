@@ -55,7 +55,7 @@ input, button {
   margin-top:10px;
   border-radius:14px;
   border:1px solid #ddd;
-  box-sizing:border-box; /* ⭐ 이거 추가 */
+  box-sizing:border-box;
 }
 
 button {
@@ -76,6 +76,16 @@ button {
   background:linear-gradient(135deg,#0A84FF,#5AC8FA);
   color:white;
   font-size:14px;
+}
+
+/* ⭐ 슬라이드 애니메이션 */
+.slide {
+  animation: slideFade .35s ease;
+}
+
+@keyframes slideFade {
+  0% { opacity:0; transform:translateX(30px); }
+  100% { opacity:1; transform:translateX(0); }
 }
 
 .toggle {
@@ -120,6 +130,11 @@ button {
 
 <div class="container" id="mainPage" style="display:none">
 
+  <div style="display:flex; gap:10px; margin-bottom:10px;">
+    <button onclick="changeWeek(-1)">◀ 이전 주</button>
+    <button onclick="changeWeek(1)">다음 주 ▶</button>
+  </div>
+
   <div class="card">
     <h3>🍽 급식</h3>
     <div id="meal"></div>
@@ -128,11 +143,6 @@ button {
   <div class="card">
     <h3>📚 시간표</h3>
     <div id="time" class="timetable"></div>
-  </div>
-
-  <div class="card">
-    <button onclick="go('https://www.u2math.co.kr/Login/Index')">유투엠</button>
-    <button onclick="go('https://student.mathflat.com/#/login?_si=2')">매쓰플랫</button>
   </div>
 
 </div>
@@ -150,8 +160,7 @@ const firebaseConfig = {
   projectId: "ksthub-3d6e6",
   storageBucket: "ksthub-3d6e6.firebasestorage.app",
   messagingSenderId: "951582864781",
-  appId: "1:951582864781:web:00a537f9561b988339f9c4",
-  measurementId: "G-9KPZDH8RWJ"
+  appId: "1:951582864781:web:00a537f9561b988339f9c4"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -164,47 +173,11 @@ let currentUser = localStorage.getItem("user");
 let userData = null;
 let schoolCode="", atpt="";
 
-// 🔔 알림 권한 요청
-if(location.protocol !== "file:"){
-  requestPermission();
-}
+let weekOffset = 0;
 
-async function requestPermission(){
-  try{
-    const permission = await Notification.requestPermission();
-    if(permission !== "granted") return;
-
-    const token = await getToken(messaging,{
-      vapidKey:"여기"
-    });
-
-    console.log("FCM 토큰:",token);
-
-    if(token && currentUser){
-      await set(ref(db,"tokens/"+currentUser),{
-        token:token
-      });
-    }
-
-  }catch(e){
-    console.error(e);
-  }
-}
-
-// 🔔 포그라운드 알림
-onMessage(messaging,(payload)=>{
-  alert(payload.notification.title + "\n" + payload.notification.body);
-});
-
-// 🔐 자동 로그인
-if(currentUser) autoLogin();
-
-async function autoLogin(){
-  const snap = await get(ref(db,"users/"+currentUser));
-  if(snap.exists()){ userData=snap.val(); showMain(); }
-}
-
-// 🔐 로그인
+/* =====================
+   로그인
+===================== */
 window.login = async function(){
   const id = document.getElementById("userId").value;
   if(!/^ufes\d+$/.test(id)) return alert("형식 오류");
@@ -218,44 +191,100 @@ window.login = async function(){
     document.getElementById("loginPage").style.display="none";
     document.getElementById("setupPage").style.display="block";
   }
-}
+};
 
-// 🔍 학교 검색
-window.searchSchool = async function(){
-  const q = document.getElementById("schoolInput").value;
-  if(q.length<2) return;
+document.getElementById("loginBtn")?.addEventListener("click", login);
 
-  const res = await fetch(`https://open.neis.go.kr/hub/schoolInfo?KEY=${API_KEY}&Type=json&SCHUL_NM=${q}`);
-  const data = await res.json();
-  const list = data.schoolInfo?.[1]?.row || [];
+/* =====================
+   주 이동
+===================== */
+window.changeWeek = (dir) => {
+  weekOffset += dir;
+  loadMeal();
+  loadTime();
+};
 
-  const schoolList = document.getElementById("schoolList");
-  schoolList.innerHTML="";
+/* =====================
+   날짜 (월~금)
+===================== */
+function getWeekDates(offsetWeeks){
+  const today = new Date();
+  const day = today.getDay();
+  const mondayOffset = (day === 0 ? -6 : 1 - day);
 
-  list.forEach(s=>{
-    const div=document.createElement("div");
-    div.innerText=s.SCHUL_NM;
-    div.onclick=()=>{
-      document.getElementById("schoolInput").value=s.SCHUL_NM;
-      schoolCode=s.SD_SCHUL_CODE;
-      atpt=s.ATPT_OFCDC_SC_CODE;
-      schoolList.innerHTML="";
-    };
-    schoolList.appendChild(div);
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + mondayOffset + (offsetWeeks * 7));
+
+  return Array.from({length: 5}, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return d.toISOString().slice(0,10).replace(/-/g,'');
   });
 }
 
-// 💾 저장
-window.saveInfo = async function(){
-  const grade=document.getElementById("grade").value;
-  const classN=document.getElementById("class").value;
+/* =====================
+   급식 (슬라이드)
+===================== */
+async function loadMeal(){
+  const el = document.getElementById("meal");
+  el.classList.remove("slide");
+  void el.offsetWidth;
+  el.classList.add("slide");
 
-  await set(ref(db,"users/"+currentUser),{schoolCode,atpt,grade,classN});
-  userData={schoolCode,atpt,grade,classN};
-  showMain();
+  const dates = getWeekDates(weekOffset);
+
+  const results = await Promise.all(dates.map(async (date)=>{
+    const res = await fetch(`https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${userData.atpt}&SD_SCHUL_CODE=${userData.schoolCode}&MLSV_YMD=${date}`);
+    const data = await res.json();
+
+    const meal = data.mealServiceDietInfo?.[1]?.row?.[0]?.DDISH_NM;
+
+    return `
+      <div class="period">
+        ${date.slice(4,6)}/${date.slice(6,8)}<br>
+        ${meal ? meal.replace(/<br\/>/g,'<br>') : "급식 없음"}
+      </div>
+    `;
+  }));
+
+  el.innerHTML = results.join("");
 }
 
-// 📱 화면 전환
+/* =====================
+   시간표 (슬라이드)
+===================== */
+async function loadTime(){
+  const el = document.getElementById("time");
+  el.classList.remove("slide");
+  void el.offsetWidth;
+  el.classList.add("slide");
+
+  const dates = getWeekDates(weekOffset);
+
+  const results = await Promise.all(dates.map(async (date)=>{
+    const res = await fetch(`https://open.neis.go.kr/hub/hisTimetable?KEY=${API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${userData.atpt}&SD_SCHUL_CODE=${userData.schoolCode}&GRADE=${userData.grade}&CLASS_NM=${userData.classN}&ALL_TI_YMD=${date}`);
+    const data = await res.json();
+
+    const rows = data.hisTimetable?.[1]?.row;
+
+    const html = rows
+      ? rows.map(r=>`<div class="period">${r.PERIO}교시<br>${r.ITRT_CNTNT}</div>`).join('')
+      : "없음";
+
+    return `
+      <div class="card">
+        <h4>${date.slice(4,6)}/${date.slice(6,8)}</h4>
+        <div class="timetable">${html}</div>
+      </div>
+    `;
+  }));
+
+  el.innerHTML = results.join("");
+}
+
+/* =====================
+   화면 전환
+===================== */
 function showMain(){
   document.getElementById("loginPage").style.display="none";
   document.getElementById("setupPage").style.display="none";
@@ -264,44 +293,12 @@ function showMain(){
   loadTime();
 }
 
-// 📅 날짜
-function today(){
-  return new Date().toISOString().slice(0,10).replace(/-/g,'');
-}
-
-// 🍽 급식
-async function loadMeal(){
-  const res = await fetch(`https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${userData.atpt}&SD_SCHUL_CODE=${userData.schoolCode}&MLSV_YMD=${today()}`);
-  const data = await res.json();
-
-  const meal=data.mealServiceDietInfo?.[1]?.row?.[0]?.DDISH_NM;
-  document.getElementById("meal").innerHTML =
-    meal ? meal.replace(/<br\/>/g,'<br>') : "없음";
-}
-
-// 📚 시간표
-async function loadTime(){
-  const res = await fetch(`https://open.neis.go.kr/hub/hisTimetable?KEY=${API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${userData.atpt}&SD_SCHUL_CODE=${userData.schoolCode}&GRADE=${userData.grade}&CLASS_NM=${userData.classN}&ALL_TI_YMD=${today()}`);
-  const data = await res.json();
-
-  const rows=data.hisTimetable?.[1]?.row;
-  if(!rows){
-    document.getElementById("time").innerHTML="없음";
-    return;
-  }
-
-  document.getElementById("time").innerHTML =
-    rows.map(r=>`<div class="period">${r.PERIO}교시<br>${r.ITRT_CNTNT}</div>`).join('');
-}
-
-// 🌙 다크모드
+/* =====================
+   다크모드
+===================== */
 window.toggleDark = ()=> document.body.classList.toggle("dark");
 
-// 🔗 링크
 window.go = (url)=> window.open(url);
-
-// ✅ 로그인 버튼 연결 (맨 아래!)
-document.getElementById("loginBtn")?.addEventListener("click", login);
 </script>
 
 </body>
