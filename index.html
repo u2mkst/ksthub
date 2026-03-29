@@ -102,7 +102,7 @@ button {
   <div class="card">
     <h3>로그인</h3>
     <input id="userId" placeholder="ufes1234">
-    <button onclick="login()">로그인</button>
+    <button id="loginBtn">로그인</button>
   </div>
 </div>
 
@@ -216,7 +216,7 @@ window.searchSchool = async function(){
   const q = schoolInput.value;
   if(q.length<2) return;
 
-  const res = await fetch(`https://open.neis.go.kr/hub/schoolInfo?KEY=${API_KEY}&Type=json&SCHUL_NM=${q}`);
+  const res = await fetch(`https://open.neis.go.kr/hub/schoolInfo?KEY=${API_KEY}&Type=json&Type=json&SCHUL_NM=${q}`);
   const data = await res.json();
   const list = data.schoolInfo?.[1]?.row || [];
 
@@ -235,8 +235,8 @@ window.searchSchool = async function(){
 }
 
 window.saveInfo = async function(){
-  const grade=grade.value;
-  const classN=class.value;
+  const grade=document.getElementById("grade").value;
+const classN=document.getElementById("class").value;
 
   await set(ref(db,"users/"+currentUser),{schoolCode,atpt,grade,classN});
   userData={schoolCode,atpt,grade,classN};
