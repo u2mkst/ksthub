@@ -2,359 +2,295 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KST HUB</title>
+<title>학교 앱</title>
 
 <style>
-:root {
-  --main:#0A84FF;
-  --bg:#f2f4f8;
-  --card:#fff;
-  --text:#111;
-}
-
-body {
+body{
   margin:0;
-  font-family:-apple-system;
-  background:var(--bg);
-  color:var(--text);
+  font-family: sans-serif;
+  background:#f4f6f8;
 }
 
-.dark {
-  --bg:#121212;
-  --card:#1e1e1e;
-  --text:#fff;
+/* 상단 */
+header{
+  background:#4f46e5;
+  color:white;
+  padding:15px;
+  font-size:18px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
 }
 
-.header {
-  padding:20px;
-  text-align:center;
-  font-size:22px;
-  font-weight:700;
-  background:linear-gradient(135deg,#0A84FF,#5AC8FA);
-  color:#fff;
-}
-
-.container {
-  padding:20px;
-  max-width:520px;
-  margin:auto;
-}
-
-.card {
-  background:var(--card);
-  padding:16px;
-  border-radius:18px;
-  margin-bottom:14px;
-  box-shadow:0 10px 25px rgba(0,0,0,0.08);
-}
-
-input, button {
-  width:100%;
+/* 카드 */
+.card{
+  background:white;
+  margin:10px;
   padding:12px;
-  margin-top:10px;
   border-radius:12px;
-  border:1px solid #ddd;
-  box-sizing:border-box;
+  box-shadow:0 2px 6px rgba(0,0,0,0.1);
 }
 
-button {
-  background:var(--main);
-  color:#fff;
+/* 버튼 */
+button{
   border:none;
+  padding:8px 12px;
+  border-radius:8px;
+  cursor:pointer;
 }
 
-/* 작은 버튼 */
-.smallBtn {
-  width:auto;
-  padding:6px 10px;
+.small-btn{
   font-size:12px;
-  border-radius:10px;
-  margin:4px 4px 0 0;
-}
-
-/* 시간표 */
-.timetable {
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:8px;
-}
-
-.period {
-  padding:10px;
-  border-radius:12px;
-  background:linear-gradient(135deg,#0A84FF,#5AC8FA);
-  color:#fff;
-  font-size:13px;
+  padding:5px 8px;
 }
 
 /* 슬라이드 */
-.slide {
-  animation:fade .25s ease;
+.slide{
+  animation: slideIn 0.3s ease;
+}
+@keyframes slideIn{
+  from{transform:translateX(20px);opacity:0;}
+  to{transform:translateX(0);opacity:1;}
 }
 
-@keyframes fade {
-  from{opacity:0; transform:translateX(20px);}
-  to{opacity:1; transform:translateX(0);}
-}
-
-/* 하단 바로가기 */
-.footer {
+/* 하단 링크 */
+.bottom-links{
+  position:fixed;
+  bottom:0;
+  width:100%;
+  background:white;
+  display:flex;
+  justify-content:space-around;
+  padding:8px;
+  border-top:1px solid #ddd;
   font-size:12px;
-  text-align:center;
-  opacity:0.7;
-  margin-top:10px;
+}
+
+.link{
+  color:#4f46e5;
+  cursor:pointer;
 }
 </style>
 </head>
 
 <body>
 
-<div class="header">KST HUB</div>
+<header>
+  <div>📚 학교 앱</div>
+  <button onclick="openSettings()">⚙️</button>
+</header>
 
-<!-- 로그인 -->
-<div class="container" id="loginPage">
-  <div class="card">
-    <h3>로그인</h3>
-    <input id="userId" placeholder="ufes1234">
-    <button id="loginBtn">로그인</button>
-  </div>
+<div id="app"></div>
+
+<!-- 하단 링크 -->
+<div class="bottom-links">
+  <div class="link" onclick="show('timetable')">시간표</div>
+  <div class="link" onclick="show('meal')">급식</div>
+  <div class="link" onclick="show('home')">홈</div>
 </div>
 
-<!-- 설정 -->
-<div class="container" id="setupPage" style="display:none">
-  <div class="card">
-    <h3>초기 설정</h3>
+<script>
+/* =========================
+   사용자 데이터
+========================= */
+let userData = JSON.parse(localStorage.getItem("userData")) || {
+  schoolCode:"",
+  atpt:"",
+  grade:"1",
+  classN:"1"
+};
 
-    <input id="schoolInput" placeholder="학교 검색" oninput="searchSchool()">
-    <div id="schoolList"></div>
+/* =========================
+   API KEY
+========================= */
+const API_KEY = "YOUR_NEIS_KEY";
 
-    <input id="grade" placeholder="학년">
-    <input id="class" placeholder="반">
+/* =========================
+   화면 상태
+========================= */
+let current = "home";
 
-    <button onclick="saveInfo()">저장</button>
-  </div>
-</div>
+/* =========================
+   화면 전환
+========================= */
+function show(page){
+  current = page;
+  render();
+}
 
-<!-- 메인 -->
-<div class="container" id="mainPage" style="display:none">
+/* =========================
+   설정
+========================= */
+function openSettings(){
+  const html = `
+    <div class="card slide">
+      <h3>⚙️ 설정</h3>
 
-  <!-- 설정 수정 -->
-  <div class="card">
-    <button class="smallBtn" onclick="editInfo()">학교/학년/반 변경</button>
-    <button class="smallBtn" onclick="toggleView()">이번주 보기</button>
-  </div>
+      학교코드<br>
+      <input id="schoolCode" value="${userData.schoolCode}"><br><br>
 
-  <!-- 링크 -->
-  <div class="card">
-    <button onclick="go('https://www.u2math.co.kr/Login/Index')">유투엠</button>
-    <button onclick="go('https://student.mathflat.com/#/login?_si=2')">매쓰플랫</button>
-  </div>
+      교육청코드<br>
+      <input id="atpt" value="${userData.atpt}"><br><br>
 
-  <!-- 급식 -->
-  <div class="card">
-    <h3>🍽 급식</h3>
-    <div id="meal"></div>
-  </div>
+      학년<br>
+      <input id="grade" value="${userData.grade}"><br><br>
 
-  <!-- 시간표 -->
-  <div class="card">
-    <h3>📚 시간표</h3>
-    <div id="time"></div>
-  </div>
+      반<br>
+      <input id="classN" value="${userData.classN}"><br><br>
 
-  <div class="footer">
-    KST HUB shortcuts
-  </div>
+      <button onclick="saveSettings()">저장</button>
+    </div>
+  `;
+  document.getElementById("app").innerHTML = html;
+}
 
-</div>
+function saveSettings(){
+  userData.schoolCode = document.getElementById("schoolCode").value;
+  userData.atpt = document.getElementById("atpt").value;
+  userData.grade = document.getElementById("grade").value;
+  userData.classN = document.getElementById("classN").value;
 
-<script type="module">
+  localStorage.setItem("userData", JSON.stringify(userData));
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+  alert("저장 완료");
+  show("home");
+}
 
-const app = initializeApp({
-  apiKey:"AIzaSyAIPlpSbUksGKrzxOX3fl4TKwXDClf7ba0",
-  authDomain:"ksthub-3d6e6.firebaseapp.com",
-  projectId:"ksthub-3d6e6",
-  databaseURL:"https://ksthub-3d6e6-default-rtdb.firebaseio.com"
-});
+/* =========================
+   날짜 (이번주)
+========================= */
+function getWeekDates(){
+  const today = new Date();
+  const day = today.getDay();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - (day === 0 ? 6 : day - 1));
 
-const db = getDatabase(app);
-const API_KEY = "19f78fd07bfb4243a6333e7bf4641bfc";
-
-let user = localStorage.getItem("user");
-let userData=null;
-let viewWeek=false;
-let schoolCode="", atpt="";
-
-/* ================= 로그인 ================= */
-window.login = async ()=>{
-  const id = document.getElementById("userId").value;
-  if(!id) return;
-
-  user=id;
-  localStorage.setItem("user",id);
-
-  const snap = await get(ref(db,"users/"+id));
-
-  if(snap.exists()){
-    userData=snap.val();
-    schoolCode=userData.schoolCode;
-    atpt=userData.atpt;
-    showMain();
-  }else{
-    document.getElementById("loginPage").style.display="none";
-    document.getElementById("setupPage").style.display="block";
+  let arr = [];
+  for(let i=0;i<5;i++){
+    const d = new Date(monday);
+    d.setDate(monday.getDate()+i);
+    arr.push(d.toISOString().slice(0,10).replace(/-/g,""));
   }
-};
-
-document.getElementById("loginBtn").onclick=login;
-
-/* ================= 설정 수정 ================= */
-window.editInfo = ()=>{
-  document.getElementById("setupPage").style.display="block";
-  document.getElementById("mainPage").style.display="none";
-};
-
-/* ================= 보기 ================= */
-window.toggleView = ()=>{
-  viewWeek=!viewWeek;
-  loadMeal();
-  loadTime();
-};
-
-/* ================= 저장 ================= */
-window.saveInfo = async ()=>{
-  const grade=document.getElementById("grade").value;
-  const classN=document.getElementById("class").value;
-
-  await set(ref(db,"users/"+user),{
-    schoolCode,atpt,grade,classN
-  });
-
-  userData={schoolCode,atpt,grade,classN};
-
-  showMain();
-};
-
-/* ================= 메인 ================= */
-function showMain(){
-  document.getElementById("loginPage").style.display="none";
-  document.getElementById("setupPage").style.display="none";
-  document.getElementById("mainPage").style.display="block";
-
-  loadMeal();
-  loadTime();
+  return arr;
 }
 
-/* ================= 날짜 ================= */
-function today(){
-  return new Date().toISOString().slice(0,10).replace(/-/g,'');
-}
+/* =========================
+   시간표
+========================= */
+async function loadTimetable(){
+  const dates = getWeekDates();
 
-function weekDates(){
-  const d=new Date();
-  const day=d.getDay();
-  const monday=new Date(d);
-  monday.setDate(d.getDate()-(day===0?6:day-1));
+  let html = `<div class="card slide">
+    <h3>📅 이번주 시간표</h3>
+    <button class="small-btn" onclick="loadTimetable()">새로고침</button>
+  </div>`;
 
-  return [...Array(5)].map((_,i)=>{
-    const x=new Date(monday);
-    x.setDate(monday.getDate()+i);
-    return x.toISOString().slice(0,10).replace(/-/g,'');
-  });
-}
+  for(const date of dates){
 
-/* ================= 급식 ================= */
-async function loadMeal(){
-  const el=document.getElementById("meal");
+    const grade = String(userData.grade).trim();
+    const classN = String(userData.classN).replace(/[^0-9]/g,'');
 
-  const res=await fetch(`https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${atpt}&SD_SCHUL_CODE=${schoolCode}&MLSV_YMD=${today()}`);
-  const data=await res.json();
+    const url =
+`https://open.neis.go.kr/hub/hisTimetable?KEY=${API_KEY}&Type=json
+&ATPT_OFCDC_SC_CODE=${userData.atpt}
+&SD_SCHUL_CODE=${userData.schoolCode}
+&GRADE=${grade}
+&CLASS_NM=${classN}
+&ALL_TI_YMD=${date}`;
 
-  const meal=data.mealServiceDietInfo?.[1]?.row?.[0]?.DDISH_NM;
+    try{
+      const res = await fetch(url);
+      const data = await res.json();
 
-  el.innerHTML=meal?meal:"급식 없음";
-}
+      const rows = data?.hisTimetable?.[1]?.row;
 
-/* ================= 시간표 (핵심 FIX) ================= */
-async function loadTime(){
-  const el=document.getElementById("time");
-  el.classList.add("slide");
+      html += `<div class="card slide">
+        <b>${date.slice(4,6)}/${date.slice(6,8)}</b><br>`;
 
-  if(!viewWeek){
-    const res=await fetch(`https://open.neis.go.kr/hub/hisTimetable?KEY=${API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${atpt}&SD_SCHUL_CODE=${schoolCode}&GRADE=${userData.grade}&CLASS_NM=${userData.classN}&ALL_TI_YMD=${today()}`);
-    const data=await res.json();
+      if(!rows){
+        html += `<div style="opacity:0.6">시간표 없음</div>`;
+      } else {
+        rows.forEach(r=>{
+          html += `${r.PERIO}교시 - ${r.ITRT_CNTNT}<br>`;
+        });
+      }
 
-    const rows=data.hisTimetable?.[1]?.row;
+      html += `</div>`;
 
-    if(!rows){
-      el.innerHTML="❌ 시간표 없음 (설정 확인)";
-      return;
+    }catch(e){
+      html += `<div class="card">오류</div>`;
     }
-
-    el.innerHTML=rows.map(r=>`
-      <div class="period">${r.PERIO}교시<br>${r.ITRT_CNTNT}</div>
-    `).join("");
-
-    return;
   }
 
-  const dates=weekDates();
-
-  const result=await Promise.all(dates.map(async d=>{
-    const res=await fetch(`https://open.neis.go.kr/hub/hisTimetable?KEY=${API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${atpt}&SD_SCHUL_CODE=${schoolCode}&GRADE=${userData.grade}&CLASS_NM=${userData.classN}&ALL_TI_YMD=${d}`);
-    const data=await res.json();
-
-    const rows=data.hisTimetable?.[1]?.row;
-
-    const html=rows?rows.map(r=>`<div class="period">${r.PERIO}교시<br>${r.ITRT_CNTNT}</div>`).join(''):"없음";
-
-    return `
-      <div class="card">
-        <b>${d.slice(4,6)}/${d.slice(6,8)}</b>
-        <div class="timetable">${html}</div>
-      </div>
-    `;
-  }));
-
-  el.innerHTML=result.join("");
+  document.getElementById("app").innerHTML = html;
 }
 
-/* ================= 학교 검색 ================= */
-window.searchSchool=async ()=>{
-  const q=document.getElementById("schoolInput").value;
-  if(q.length<2) return;
+/* =========================
+   급식 (주간)
+========================= */
+async function loadMeal(){
+  const dates = getWeekDates();
 
-  const res=await fetch(`https://open.neis.go.kr/hub/schoolInfo?KEY=${API_KEY}&Type=json&SCHUL_NM=${q}`);
-  const data=await res.json();
+  let html = `<div class="card slide">
+    <h3>🍱 이번주 급식</h3>
+  </div>`;
 
-  const list=data.schoolInfo?.[1]?.row||[];
+  for(const date of dates){
 
-  const box=document.getElementById("schoolList");
-  box.innerHTML="";
+    const url =
+`https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${API_KEY}&Type=json
+&ATPT_OFCDC_SC_CODE=${userData.atpt}
+&SD_SCHUL_CODE=${userData.schoolCode}
+&MLSV_YMD=${date}`;
 
-  list.forEach(s=>{
-    const div=document.createElement("div");
-    div.innerText=s.SCHUL_NM;
-    div.onclick=()=>{
-      schoolCode=s.SD_SCHUL_CODE;
-      atpt=s.ATPT_OFCDC_SC_CODE;
-      document.getElementById("schoolInput").value=s.SCHUL_NM;
-      box.innerHTML="";
-    };
-    box.appendChild(div);
-  });
-};
+    try{
+      const res = await fetch(url);
+      const data = await res.json();
 
-/* ================= 기타 ================= */
-window.go=(u)=>window.open(u);
-window.toggleDark=()=>document.body.classList.toggle("dark");
+      const row = data?.mealServiceDietInfo?.[1]?.row?.[0];
 
-window.login=login;
+      html += `<div class="card slide">
+        <b>${date.slice(4,6)}/${date.slice(6,8)}</b><br>`;
 
+      if(!row){
+        html += `급식 없음`;
+      } else {
+        html += row.DDISH_NM.replace(/\<br\/>/g,"<br>");
+      }
+
+      html += `</div>`;
+
+    }catch(e){
+      html += `<div class="card">오류</div>`;
+    }
+  }
+
+  document.getElementById("app").innerHTML = html;
+}
+
+/* =========================
+   홈
+========================= */
+function home(){
+  document.getElementById("app").innerHTML = `
+    <div class="card slide">
+      <h3>🏫 홈</h3>
+      <button onclick="show('timetable')">시간표 보기</button>
+      <button onclick="show('meal')">급식 보기</button>
+    </div>
+  `;
+}
+
+/* =========================
+   렌더
+========================= */
+function render(){
+  if(current==="home") home();
+  if(current==="timetable") loadTimetable();
+  if(current==="meal") loadMeal();
+}
+
+render();
 </script>
 
 </body>
