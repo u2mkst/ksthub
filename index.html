@@ -2,313 +2,279 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KST HUB</title>
 
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <style>
-body {
-    margin: 0;
-    font-family: sans-serif;
-    background: linear-gradient(180deg, #eef4ff, #f8fafc);
+:root {
+  --main:#0A84FF;
+  --bg:#f2f4f8;
+  --card:#ffffff;
+  --text:#111;
 }
 
-.app {
-    max-width: 420px;
-    margin: auto;
+body {
+  margin:0;
+  font-family:-apple-system, BlinkMacSystemFont;
+  background:var(--bg);
+  color:var(--text);
+}
+
+.dark {
+  --bg:#121212;
+  --card:#1e1e1e;
+  --text:#fff;
 }
 
 .header {
-    background: white;
-    padding: 18px;
-    text-align: center;
-    font-weight: bold;
-    color: #2563eb;
-    border-bottom: 2px solid #2563eb;
+  padding:20px;
+  text-align:center;
+  font-size:22px;
+  font-weight:700;
+  background:linear-gradient(135deg,#0A84FF,#5AC8FA);
+  color:white;
 }
 
-/* 카드 애니메이션 */
+.container {
+  padding:20px;
+  max-width:520px;
+  margin:auto;
+}
+
 .card {
-    background: white;
-    margin: 20px;
-    padding: 25px;
-    border-radius: 20px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-    animation: fadeUp 0.5s ease;
+  background:var(--card);
+  padding:18px;
+  border-radius:22px;
+  margin-bottom:16px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.08);
 }
 
-@keyframes fadeUp {
-    from {opacity:0; transform: translateY(20px);}
-    to {opacity:1; transform: translateY(0);}
+input, button {
+  width:100%;
+  padding:14px;
+  margin-top:10px;
+  border-radius:14px;
+  border:1px solid #ddd;
 }
 
-/* 입력 */
-input, select {
-    width: 100%;
-    height: 44px;
-    padding: 0 12px;
-    margin-top: 8px;
-    margin-bottom: 12px;
-    border-radius: 12px;
-    border: 1px solid #e2e8f0;
-    transition: 0.2s;
-}
-
-input:focus, select:focus {
-    border-color: #2563eb;
-    box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
-    transform: scale(1.02);
-    outline: none;
-}
-
-/* 버튼 */
 button {
-    width: 100%;
-    height: 46px;
-    border-radius: 14px;
-    border: none;
-    background: linear-gradient(135deg, #2563eb, #3b82f6);
-    color: white;
-    font-weight: bold;
-    transition: 0.2s;
+  background:var(--main);
+  color:white;
+  border:none;
 }
 
-button:active {
-    transform: scale(0.95);
+.timetable {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
 }
 
-/* 링크 */
-.footer {
-    text-align: center;
-    color: #2563eb;
-    cursor: pointer;
-    margin-top: 10px;
+.period {
+  padding:12px;
+  border-radius:14px;
+  background:linear-gradient(135deg,#0A84FF,#5AC8FA);
+  color:white;
+  font-size:14px;
 }
 
-/* 학교 리스트 */
-#schoolList {
-    position:absolute;
-    width:100%;
-    background:white;
-    border-radius:12px;
-    box-shadow:0 5px 15px rgba(0,0,0,0.1);
-    max-height:200px;
-    overflow-y:auto;
-    display:none;
-    z-index:10;
+.toggle {
+  position:fixed;
+  bottom:20px;
+  right:20px;
+  width:52px;
+  height:52px;
+  border-radius:50%;
+  background:#333;
+  color:white;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
 }
-
-#schoolList div {
-    padding:12px;
-    border-bottom:1px solid #f1f5f9;
-}
-
-#schoolList div:hover {
-    background:#eff6ff;
-}
-
-.school-sub {
-    font-size:12px;
-    color:#64748b;
-}
-
-.hidden { display:none; }
 </style>
 </head>
 
 <body>
 
-<div class="app">
-    <div class="header">📘 KST HUB</div>
+<div class="header">KST HUB</div>
 
-    <!-- 로그인 -->
-    <div class="card" id="loginPage">
-        <input id="loginId" placeholder="아이디">
-        <input id="loginPw" type="password" placeholder="비밀번호">
-        <button onclick="login()">로그인</button>
-        <div class="footer" onclick="showRegister()">회원가입</div>
-    </div>
-
-    <!-- 회원가입 -->
-    <div class="card hidden" id="registerPage">
-
-        <input id="name" placeholder="이름">
-        <input id="nickname" placeholder="닉네임">
-
-        <input id="userId" placeholder="아이디">
-        <input id="password" type="password" placeholder="비밀번호">
-
-        <select id="schoolType">
-            <option value="">학교 종류</option>
-            <option value="초등학교">초등학교</option>
-            <option value="중학교">중학교</option>
-            <option value="고등학교">고등학교</option>
-        </select>
-
-        <div style="position:relative;">
-            <input id="schoolSearch" placeholder="학교 검색">
-            <div id="schoolList"></div>
-        </div>
-
-        <select id="grade"></select>
-
-        <input id="classInput" placeholder="반">
-
-        <select id="teacher">
-            <option value="">담당 선생님 선택</option>
-            <option>김선생</option>
-            <option>이선생</option>
-            <option>박선생</option>
-        </select>
-
-        <button onclick="register()">가입하기</button>
-        <div class="footer" onclick="showLogin()">로그인으로</div>
-    </div>
+<div class="container" id="loginPage">
+  <div class="card">
+    <h3>로그인</h3>
+    <input id="userId" placeholder="ufes1234">
+    <button onclick="login()">로그인</button>
+  </div>
 </div>
 
-<script>
+<div class="container" id="setupPage" style="display:none">
+  <div class="card">
+    <h3>초기 설정</h3>
+    <input id="schoolInput" placeholder="학교 검색" oninput="searchSchool()">
+    <div id="schoolList"></div>
+    <input id="grade" placeholder="학년">
+    <input id="class" placeholder="반">
+    <button onclick="saveInfo()">저장</button>
+  </div>
+</div>
+
+<div class="container" id="mainPage" style="display:none">
+
+  <div class="card">
+    <h3>🍽 급식</h3>
+    <div id="meal"></div>
+  </div>
+
+  <div class="card">
+    <h3>📚 시간표</h3>
+    <div id="time" class="timetable"></div>
+  </div>
+
+  <div class="card">
+    <button onclick="go('https://www.u2math.co.kr/Login/Index')">유투엠</button>
+    <button onclick="go('https://student.mathflat.com/#/login?_si=2')">매쓰플랫</button>
+  </div>
+
+</div>
+
+<div class="toggle" onclick="toggleDark()">🌙</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
+
 const firebaseConfig = {
-  apiKey: "AIzaSyAIPlpSbUksGKrzxOX3fl4TKwXDClf7ba0",
-  authDomain: "ksthub-3d6e6.firebaseapp.com",
-  projectId: "ksthub-3d6e6",
-  storageBucket: "ksthub-3d6e6.firebasestorage.app",
-  messagingSenderId: "951582864781",
-  appId: "1:951582864781:web:00a537f9561b988339f9c4",
-  measurementId: "G-9KPZDH8RWJ"
+  apiKey: "여기",
+  authDomain: "여기",
+  databaseURL: "여기",
+  projectId: "여기",
+  messagingSenderId: "여기",
+  appId: "여기"
 };
 
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.database();
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const messaging = getMessaging(app);
 
-// 자동 로그인
-auth.onAuthStateChanged(user => {
-    if(user){
-        location.href = "main.html";
-    }
-});
+const API_KEY = "여기";
 
-// 화면 전환
-function showRegister(){
-    loginPage.classList.add("hidden");
-    registerPage.classList.remove("hidden");
-}
-function showLogin(){
-    loginPage.classList.remove("hidden");
-    registerPage.classList.add("hidden");
+let currentUser = localStorage.getItem("user");
+let userData = null;
+let schoolCode="", atpt="";
+
+if(location.protocol !== "file:"){
+  requestPermission();
 }
 
-// 학년 자동 변경 🔥
-const gradeSelect = document.getElementById("grade");
+async function requestPermission(){
+  try{
+    const permission = await Notification.requestPermission();
+    if(permission !== "granted") return;
 
-function updateGradeOptions(type){
-    gradeSelect.innerHTML = "";
-
-    let max = 3;
-    if(type === "초등학교") max = 6;
-
-    for(let i=1;i<=max;i++){
-        const opt = document.createElement("option");
-        opt.value = i;
-        opt.innerText = i + "학년";
-        gradeSelect.appendChild(opt);
-    }
-}
-
-// 학교 종류 변경 감지
-schoolType.addEventListener("change", ()=>{
-    updateGradeOptions(schoolType.value);
-});
-
-// 초기값
-updateGradeOptions("중학교");
-
-// 닉네임 생성
-function makeUfesTag(){
-    return "ufes" + Math.floor(1000 + Math.random() * 9000);
-}
-
-// 회원가입
-function register(){
-    const email = userId.value + "@kst.com";
-    const nicknameFinal = nickname.value + " (" + makeUfesTag() + ")";
-
-    auth.createUserWithEmailAndPassword(email, password.value)
-    .then(user=>{
-        db.ref("users/"+user.user.uid).set({
-            name: name.value,
-            nickname: nicknameFinal,
-            teacher: teacher.value,
-            schoolType: schoolType.value,
-            schoolName: schoolSearch.value,
-            grade: grade.value,
-            className: classInput.value
-        });
-
-        alert("가입 완료!");
-        showLogin();
+    const token = await getToken(messaging,{
+      vapidKey:"여기"
     });
-}
 
-// 로그인
-function login(){
-    const email = loginId.value + "@kst.com";
+    console.log("토큰:",token);
 
-    auth.signInWithEmailAndPassword(email, loginPw.value)
-    .then(()=>{
-        location.href = "main.html";
-    });
-}
-
-// 학교 검색
-const API_KEY = "19f78fd07bfb4243a6333e7bf4641bfc";
-
-let timeout;
-schoolSearch.addEventListener("input", ()=>{
-    clearTimeout(timeout);
-
-    const keyword = schoolSearch.value.trim();
-    if(keyword.length < 2){
-        schoolList.style.display="none";
-        return;
+    if(token && currentUser){
+      await set(ref(db,"tokens/"+currentUser),{
+        token:token
+      });
     }
 
-    timeout = setTimeout(()=>{
-        fetch(`https://open.neis.go.kr/hub/schoolInfo?KEY=${API_KEY}&Type=json&pSize=10&SCHUL_NM=${keyword}`)
-        .then(res=>res.json())
-        .then(data=>{
-            schoolList.innerHTML="";
+  }catch(e){
+    console.error(e);
+  }
+}
 
-            if(!data.schoolInfo) return;
-
-            data.schoolInfo[1].row.forEach(s=>{
-                const div = document.createElement("div");
-
-                div.innerHTML = `
-                    <div>${s.SCHUL_NM}</div>
-                    <div class="school-sub">
-                        ${s.ATPT_OFCDC_SC_NM} · ${s.SCHUL_KND_SC_NM}
-                    </div>
-                `;
-
-                div.onclick=()=>{
-                    schoolSearch.value = s.SCHUL_NM;
-                    schoolType.value = s.SCHUL_KND_SC_NM;
-                    updateGradeOptions(s.SCHUL_KND_SC_NM);
-                    schoolList.style.display="none";
-                };
-
-                schoolList.appendChild(div);
-            });
-
-            schoolList.style.display="block";
-        });
-    },300);
+onMessage(messaging,(payload)=>{
+  alert(payload.notification.title+"\n"+payload.notification.body);
 });
+
+if(currentUser) autoLogin();
+
+async function autoLogin(){
+  const snap = await get(ref(db,"users/"+currentUser));
+  if(snap.exists()){ userData=snap.val(); showMain(); }
+}
+
+window.login = async function(){
+  const id = userId.value;
+  if(!/^ufes\d+$/.test(id)) return alert("형식 오류");
+
+  currentUser=id;
+  localStorage.setItem("user",id);
+
+  const snap = await get(ref(db,"users/"+id));
+  if(snap.exists()){ userData=snap.val(); showMain(); }
+  else { loginPage.style.display="none"; setupPage.style.display="block"; }
+}
+
+window.searchSchool = async function(){
+  const q = schoolInput.value;
+  if(q.length<2) return;
+
+  const res = await fetch(`https://open.neis.go.kr/hub/schoolInfo?KEY=${API_KEY}&Type=json&SCHUL_NM=${q}`);
+  const data = await res.json();
+  const list = data.schoolInfo?.[1]?.row || [];
+
+  schoolList.innerHTML="";
+  list.forEach(s=>{
+    const div=document.createElement("div");
+    div.innerText=s.SCHUL_NM;
+    div.onclick=()=>{
+      schoolInput.value=s.SCHUL_NM;
+      schoolCode=s.SD_SCHUL_CODE;
+      atpt=s.ATPT_OFCDC_SC_CODE;
+      schoolList.innerHTML="";
+    };
+    schoolList.appendChild(div);
+  });
+}
+
+window.saveInfo = async function(){
+  const grade=grade.value;
+  const classN=class.value;
+
+  await set(ref(db,"users/"+currentUser),{schoolCode,atpt,grade,classN});
+  userData={schoolCode,atpt,grade,classN};
+  showMain();
+}
+
+function showMain(){
+  loginPage.style.display="none";
+  setupPage.style.display="none";
+  mainPage.style.display="block";
+  loadMeal(); loadTime();
+}
+
+function today(){return new Date().toISOString().slice(0,10).replace(/-/g,'');}
+
+async function loadMeal(){
+  const res = await fetch(`https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${API_KEY}&ATPT_OFCDC_SC_CODE=${userData.atpt}&SD_SCHUL_CODE=${userData.schoolCode}&MLSV_YMD=${today()}`);
+  const data = await res.json();
+  const meal=data.mealServiceDietInfo?.[1]?.row?.[0]?.DDISH_NM;
+  mealEl.innerHTML=meal?meal.replace(/<br\/>/g,'<br>'):"없음";
+}
+
+async function loadTime(){
+  const res = await fetch(`https://open.neis.go.kr/hub/hisTimetable?KEY=${API_KEY}&ATPT_OFCDC_SC_CODE=${userData.atpt}&SD_SCHUL_CODE=${userData.schoolCode}&GRADE=${userData.grade}&CLASS_NM=${userData.classN}&ALL_TI_YMD=${today()}`);
+  const data = await res.json();
+  const rows=data.hisTimetable?.[1]?.row;
+
+  if(!rows){ timeEl.innerHTML="없음"; return; }
+
+  timeEl.innerHTML = rows.map(r=>
+    `<div class="period">${r.PERIO}교시<br>${r.ITRT_CNTNT}</div>`
+  ).join('');
+}
+
+window.go=(url)=>window.open(url);
+window.toggleDark=()=>document.body.classList.toggle("dark");
+
+const mealEl=document.getElementById("meal");
+const timeEl=document.getElementById("time");
 </script>
 
 </body>
