@@ -64,6 +64,7 @@ button {
   border:none;
 }
 
+/* 시간표 */
 .timetable {
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -78,7 +79,7 @@ button {
   font-size:14px;
 }
 
-/* ⭐ 슬라이드 애니메이션 */
+/* 슬라이드 */
 .slide {
   animation: slideFade .35s ease;
 }
@@ -109,6 +110,7 @@ button {
 
 <div class="header">KST HUB</div>
 
+<!-- 로그인 -->
 <div class="container" id="loginPage">
   <div class="card">
     <h3>로그인</h3>
@@ -117,6 +119,7 @@ button {
   </div>
 </div>
 
+<!-- 초기설정 -->
 <div class="container" id="setupPage" style="display:none">
   <div class="card">
     <h3>초기 설정</h3>
@@ -128,18 +131,27 @@ button {
   </div>
 </div>
 
+<!-- 메인 -->
 <div class="container" id="mainPage" style="display:none">
 
-  <div style="display:flex; gap:10px; margin-bottom:10px;">
-    <button onclick="changeWeek(-1)">◀ 이전 주</button>
-    <button onclick="changeWeek(1)">다음 주 ▶</button>
+  <!-- 보기 전환 -->
+  <div class="card">
+    <button onclick="toggleView()">📌 오늘 / 이번주 보기</button>
   </div>
 
+  <!-- 링크 복구 -->
+  <div class="card">
+    <button onclick="go('https://www.u2math.co.kr/Login/Index')">유투엠</button>
+    <button onclick="go('https://student.mathflat.com/#/login?_si=2')">매쓰플랫</button>
+  </div>
+
+  <!-- 급식 -->
   <div class="card">
     <h3>🍽 급식</h3>
     <div id="meal"></div>
   </div>
 
+  <!-- 시간표 -->
   <div class="card">
     <h3>📚 시간표</h3>
     <div id="time" class="timetable"></div>
@@ -150,9 +162,9 @@ button {
 <div class="toggle" onclick="toggleDark()">🌙</div>
 
 <script type="module">
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAIPlpSbUksGKrzxOX3fl4TKwXDClf7ba0",
@@ -165,15 +177,14 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-const messaging = getMessaging(app);
 
 const API_KEY = "19f78fd07bfb4243a6333e7bf4641bfc";
 
 let currentUser = localStorage.getItem("user");
 let userData = null;
 let schoolCode="", atpt="";
-
 let weekOffset = 0;
+let viewMode = "today";
 
 /* =====================
    로그인
@@ -186,8 +197,11 @@ window.login = async function(){
   localStorage.setItem("user",id);
 
   const snap = await get(ref(db,"users/"+id));
-  if(snap.exists()){ userData=snap.val(); showMain(); }
-  else {
+
+  if(snap.exists()){
+    userData=snap.val();
+    showMain();
+  } else {
     document.getElementById("loginPage").style.display="none";
     document.getElementById("setupPage").style.display="block";
   }
@@ -196,40 +210,60 @@ window.login = async function(){
 document.getElementById("loginBtn")?.addEventListener("click", login);
 
 /* =====================
-   주 이동
+   보기 전환
 ===================== */
-window.changeWeek = (dir) => {
-  weekOffset += dir;
+window.toggleView = () => {
+  viewMode = (viewMode === "today") ? "week" : "today";
   loadMeal();
   loadTime();
 };
 
 /* =====================
-   날짜 (월~금)
+   날짜
 ===================== */
+function today(){
+  return new Date().toISOString().slice(0,10).replace(/-/g,'');
+}
+
 function getWeekDates(offsetWeeks){
-  const today = new Date();
-  const day = today.getDay();
+  const now = new Date();
+  const day = now.getDay();
   const mondayOffset = (day === 0 ? -6 : 1 - day);
 
-  const monday = new Date(today);
-  monday.setDate(today.getDate() + mondayOffset + (offsetWeeks * 7));
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + mondayOffset + offsetWeeks*7);
 
-  return Array.from({length: 5}, (_, i) => {
+  return Array.from({length:5},(_,i)=>{
     const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
+    d.setDate(monday.getDate()+i);
     return d.toISOString().slice(0,10).replace(/-/g,'');
   });
 }
 
 /* =====================
-   급식 (슬라이드)
+   급식
 ===================== */
 async function loadMeal(){
+
   const el = document.getElementById("meal");
   el.classList.remove("slide");
   void el.offsetWidth;
   el.classList.add("slide");
+
+  if(viewMode === "today"){
+    const res = await fetch(`https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${userData.atpt}&SD_SCHUL_CODE=${userData.schoolCode}&MLSV_YMD=${today()}`);
+    const data = await res.json();
+
+    const meal = data.mealServiceDietInfo?.[1]?.row?.[0]?.DDISH_NM;
+
+    el.innerHTML = `
+      <div class="period">
+        오늘 급식<br>
+        ${meal ? meal.replace(/<br\/>/g,'<br>') : "없음"}
+      </div>
+    `;
+    return;
+  }
 
   const dates = getWeekDates(weekOffset);
 
@@ -242,7 +276,7 @@ async function loadMeal(){
     return `
       <div class="period">
         ${date.slice(4,6)}/${date.slice(6,8)}<br>
-        ${meal ? meal.replace(/<br\/>/g,'<br>') : "급식 없음"}
+        ${meal ? meal.replace(/<br\/>/g,'<br>') : "없음"}
       </div>
     `;
   }));
@@ -251,13 +285,36 @@ async function loadMeal(){
 }
 
 /* =====================
-   시간표 (슬라이드)
+   시간표 (핵심 FIX)
 ===================== */
 async function loadTime(){
+
   const el = document.getElementById("time");
   el.classList.remove("slide");
   void el.offsetWidth;
   el.classList.add("slide");
+
+  if(viewMode === "today"){
+
+    const res = await fetch(`https://open.neis.go.kr/hub/hisTimetable?KEY=${API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${userData.atpt}&SD_SCHUL_CODE=${userData.schoolCode}&GRADE=${userData.grade}&CLASS_NM=${userData.classN}&ALL_TI_YMD=${today()}`);
+
+    const data = await res.json();
+    const rows = data.hisTimetable?.[1]?.row;
+
+    if(!rows){
+      el.innerHTML = "오늘 시간표 없음";
+      return;
+    }
+
+    el.innerHTML = rows.map(r=>`
+      <div class="period">
+        ${r.PERIO}교시<br>
+        ${r.ITRT_CNTNT}
+      </div>
+    `).join("");
+
+    return;
+  }
 
   const dates = getWeekDates(weekOffset);
 
@@ -289,16 +346,17 @@ function showMain(){
   document.getElementById("loginPage").style.display="none";
   document.getElementById("setupPage").style.display="none";
   document.getElementById("mainPage").style.display="block";
+
   loadMeal();
   loadTime();
 }
 
 /* =====================
-   다크모드
+   기타
 ===================== */
-window.toggleDark = ()=> document.body.classList.toggle("dark");
+window.toggleDark = ()=>document.body.classList.toggle("dark");
+window.go = (url)=>window.open(url);
 
-window.go = (url)=> window.open(url);
 </script>
 
 </body>
