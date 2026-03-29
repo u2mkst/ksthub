@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>KST HUB - 홈</title>
+<title>KST HUB</title>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -12,54 +12,64 @@
 
 <style>
 body {
-    margin: 0;
-    font-family: sans-serif;
-    background: linear-gradient(180deg, #eef4ff, #f8fafc);
+    margin:0;
+    font-family:sans-serif;
+    background:#f3f6fb;
 }
 
 /* 탑바 */
 .topbar {
-    position: sticky;
-    top: 0;
-    background: white;
-    padding: 10px 15px;
-    border-bottom: 2px solid #2563eb;
-}
-.logo { color:#2563eb; font-weight:bold; }
-
-.menu {
-    display:flex;
-    gap:10px;
-    overflow-x:auto;
-}
-.menu a {
-    text-decoration:none;
-    color:#64748b;
-    font-size:13px;
-    padding:6px 10px;
-}
-.menu .active {
-    background:#2563eb;
-    color:white;
-    border-radius:10px;
+    background:white;
+    padding:15px;
+    font-weight:bold;
+    color:#2563eb;
+    border-bottom:2px solid #2563eb;
 }
 
 /* 카드 */
 .card {
     margin:20px;
     padding:20px;
-    background:white;
     border-radius:20px;
-    box-shadow:0 10px 25px rgba(0,0,0,0.08);
+    animation:fadeUp 0.5s ease;
+}
+
+@keyframes fadeUp {
+    from {opacity:0; transform:translateY(20px);}
+    to {opacity:1; transform:translateY(0);}
+}
+
+/* 급식 카드 */
+.meal {
+    background:#fdebd3;
+}
+
+/* 시간표 카드 */
+.time {
+    background:#dbeafe;
+}
+
+/* 로딩 */
+.skeleton {
+    height:12px;
+    background:linear-gradient(90deg,#eee,#ddd,#eee);
+    background-size:200%;
+    animation:loading 1.2s infinite;
+    margin-bottom:8px;
+    border-radius:6px;
+}
+@keyframes loading {
+    0%{background-position:200%}
+    100%{background-position:-200%}
 }
 
 /* 버튼 */
 button {
-    margin-top:10px;
     width:100%;
-    height:44px;
+    margin-top:10px;
+    padding:10px;
     border:none;
-    border-radius:12px;
+    border-radius:10px;
     background:#2563eb;
     color:white;
 }
@@ -67,77 +77,67 @@ button {
 /* 모달 */
 .modal {
     position:fixed;
-    top:0; left:0;
-    width:100%; height:100%;
+    top:0;left:0;
+    width:100%;height:100%;
     background:rgba(0,0,0,0.4);
     display:none;
     justify-content:center;
     align-items:center;
 }
-.modal-content {
+.modal-box {
     background:white;
     width:90%;
     max-width:400px;
-    padding:20px;
     border-radius:20px;
+    padding:20px;
     max-height:80%;
     overflow:auto;
 }
+
+/* 주간 카드 */
 .week-card {
-    margin-bottom:12px;
     padding:12px;
-    background:#f8fafc;
+    margin-bottom:10px;
     border-radius:12px;
+    background:#f1f5f9;
 }
 </style>
 </head>
 
 <body>
 
-<!-- 탑바 -->
-<div class="topbar">
-    <div class="logo">📘 KST HUB</div>
-    <div class="menu">
-        <a href="main.html" class="active">홈</a>
-        <a href="point.html">포인트</a>
-        <a href="plant.html">식물</a>
-        <a href="today.html">오늘</a>
-        <a href="https://www.u2math.co.kr/Login/Index" target="_blank">유투엠</a>
-        <a href="https://student.mathflat.com/#/history?_si=1" target="_blank">매쓰플랫</a>
-        <a href="support.html">문의</a>
-        <a href="mypage.html">마이페이지</a>
-    </div>
-</div>
+<div class="topbar">📘 KST HUB</div>
 
-<!-- 유저 -->
 <div class="card">
-    <h2 id="nickname">...</h2>
+    <h2 id="nickname">로딩중...</h2>
     <div id="school"></div>
 </div>
 
-<!-- 행운 점수 -->
 <div class="card">
     <h3>🍀 오늘의 행운 점수</h3>
     <h1 id="luckScore"></h1>
 </div>
 
-<!-- 급식 -->
-<div class="card">
-    <h3>🍱 오늘 급식</h3>
-    <div id="meal">불러오는 중...</div>
+<div class="card meal">
+    <h3>🍱 오늘의 급식</h3>
+    <div id="meal">
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
+    </div>
     <button onclick="openMeal()">자세히 보기</button>
 </div>
 
-<!-- 시간표 -->
-<div class="card">
-    <h3>📘 오늘 시간표</h3>
-    <div id="timetable">불러오는 중...</div>
+<div class="card time">
+    <h3>📘 오늘의 시간표</h3>
+    <div id="timetable">
+        <div class="skeleton"></div>
+    </div>
     <button onclick="openTime()">자세히 보기</button>
 </div>
 
 <!-- 모달 -->
 <div class="modal" id="modal">
-    <div class="modal-content">
+    <div class="modal-box">
         <div id="modalContent"></div>
         <button onclick="nextWeek()">다음주 ▶</button>
         <button onclick="closeModal()">닫기</button>
@@ -145,6 +145,10 @@ button {
 </div>
 
 <script>
+// 🔥 API KEY
+const NEIS_API_KEY = "19f78fd07bfb4243a6333e7bf4641bfc";
+
+// Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyAIPlpSbUksGKrzxOX3fl4TKwXDClf7ba0",
   authDomain: "ksthub-3d6e6.firebaseapp.com",
@@ -159,9 +163,9 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.database();
 
-let userData = null;
-let currentWeek = 0;
-let currentMode = "";
+let userData;
+let weekOffset = 0;
+let mode = "";
 
 // 로그인 체크
 auth.onAuthStateChanged(user=>{
@@ -169,11 +173,14 @@ auth.onAuthStateChanged(user=>{
         location.href="index.html";
     } else {
         db.ref("users/"+user.uid).once("value").then(s=>{
+            if(!s.val()){
+                alert("유저정보 없음");
+                location.href="index.html";
+                return;
+            }
             userData = s.val();
-
             nickname.innerText = userData.nickname;
-            school.innerText = userData.schoolName + " / " + userData.grade + "학년";
-
+            school.innerText = userData.schoolName;
             loadToday();
         });
     }
@@ -192,140 +199,120 @@ function loadToday(){
 }
 
 // 학교 코드
-function getSchoolCode(name){
-    return fetch(`https://open.neis.go.kr/hub/schoolInfo?KEY=19f78fd07bfb4243a6333e7bf4641bfc&Type=json&SCHUL_NM=${name}`)
-    .then(r=>r.json())
-    .then(d=>{
-        if(!d.schoolInfo) return null;
-        const s = d.schoolInfo[1].row[0];
-        return {ATPT:s.ATPT_OFCDC_SC_CODE, SD:s.SD_SCHUL_CODE};
-    });
+async function getSchoolCode(name){
+    const res = await fetch(`https://open.neis.go.kr/hub/schoolInfo?KEY=${NEIS_API_KEY}&Type=json&SCHUL_NM=${name}`);
+    const d = await res.json();
+    if(!d.schoolInfo) return null;
+    const s = d.schoolInfo[1].row[0];
+    return {ATPT:s.ATPT_OFCDC_SC_CODE, SD:s.SD_SCHUL_CODE};
 }
 
-// 오늘 급식
-function loadMealToday(){
-    getSchoolCode(userData.schoolName).then(c=>{
-        if(!c){ meal.innerText="정보 없음"; return; }
+// 급식 오늘
+async function loadMealToday(){
+    const code = await getSchoolCode(userData.schoolName);
+    if(!code){ meal.innerText="정보 없음"; return;}
 
-        fetch(`https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=19f78fd07bfb4243a6333e7bf4641bfc&Type=json&ATPT_OFCDC_SC_CODE=${c.ATPT}&SD_SCHUL_CODE=${c.SD}&MLSV_YMD=${today()}`)
-        .then(r=>r.json())
-        .then(d=>{
-            if(!d.mealServiceDietInfo){
-                meal.innerText="급식 없음";
-                return;
-            }
-            meal.innerHTML = d.mealServiceDietInfo[1].row[0].DDISH_NM.replace(/<br\/>/g,"<br>");
-        });
-    });
+    const res = await fetch(`https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${NEIS_API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${code.ATPT}&SD_SCHUL_CODE=${code.SD}&MLSV_YMD=${today()}`);
+    const d = await res.json();
+
+    if(!d.mealServiceDietInfo){
+        meal.innerText="급식 없음";
+        return;
+    }
+
+    meal.innerHTML = d.mealServiceDietInfo[1].row[0].DDISH_NM.replace(/<br\/>/g,"<br>");
 }
 
-// 오늘 시간표
-function loadTimeToday(){
-    getSchoolCode(userData.schoolName).then(c=>{
-        if(!c){ timetable.innerText="정보 없음"; return; }
+// 시간표 오늘
+async function loadTimeToday(){
+    const code = await getSchoolCode(userData.schoolName);
+    if(!code){ timetable.innerText="정보 없음"; return;}
 
-        fetch(`https://open.neis.go.kr/hub/hisTimetable?KEY=19f78fd07bfb4243a6333e7bf4641bfc&Type=json&ATPT_OFCDC_SC_CODE=${c.ATPT}&SD_SCHUL_CODE=${c.SD}&ALL_TI_YMD=${today()}&GRADE=${userData.grade}`)
-        .then(r=>r.json())
-        .then(d=>{
-            if(!d.hisTimetable){
-                timetable.innerText="시간표 없음";
-                return;
-            }
+    const res = await fetch(`https://open.neis.go.kr/hub/hisTimetable?KEY=${NEIS_API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${code.ATPT}&SD_SCHUL_CODE=${code.SD}&ALL_TI_YMD=${today()}&GRADE=${userData.grade}`);
+    const d = await res.json();
 
-            let html="";
-            d.hisTimetable[1].row.forEach(r=>{
-                html += r.PERIO+"교시 "+r.ITRT_CNTNT+"<br>";
-            });
-            timetable.innerHTML = html;
-        });
+    if(!d.hisTimetable){
+        timetable.innerText="시간표 없음";
+        return;
+    }
+
+    let html="";
+    d.hisTimetable[1].row.forEach(r=>{
+        html += `${r.PERIO}교시 ${r.ITRT_CNTNT}<br>`;
     });
+    timetable.innerHTML = html;
 }
 
 // 주간 날짜
-function getWeekDates(offset=0){
-    const today = new Date();
-    const day = today.getDay();
-    const monday = new Date(today);
-    monday.setDate(today.getDate()-day+1+(offset*7));
+function getWeek(){
+    const start = new Date();
+    start.setDate(start.getDate() - start.getDay() + 1 + weekOffset*7);
 
     let arr=[];
     for(let i=0;i<5;i++){
-        let d=new Date(monday);
-        d.setDate(monday.getDate()+i);
+        let d=new Date(start);
+        d.setDate(start.getDate()+i);
         arr.push(d.toISOString().slice(0,10).replace(/-/g,""));
     }
     return arr;
 }
 
-// 주간 급식
-function loadWeeklyMeal(){
-    currentMode="meal";
-    modalContent.innerHTML="불러오는 중...";
-    const dates=getWeekDates(currentWeek);
+// 주간 로드
+async function loadWeek(type){
+    const code = await getSchoolCode(userData.schoolName);
+    const dates = getWeek();
 
-    getSchoolCode(userData.schoolName).then(code=>{
-        let html="";
-        dates.forEach(date=>{
-            fetch(`https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=19f78fd07bfb4243a6333e7bf4641bfc&Type=json&ATPT_OFCDC_SC_CODE=${code.ATPT}&SD_SCHUL_CODE=${code.SD}&MLSV_YMD=${date}`)
-            .then(r=>r.json())
-            .then(d=>{
-                let menu="정보 없음";
-                if(d.mealServiceDietInfo){
-                    menu=d.mealServiceDietInfo[1].row[0].DDISH_NM.replace(/<br\/>/g,"<br>");
-                }
+    modalContent.innerHTML="";
 
-                html+=`<div class="week-card"><b>${date}</b><br>${menu}</div>`;
-                modalContent.innerHTML=html;
-            });
-        });
-    });
-}
+    for(let date of dates){
+        let content="정보 없음";
 
-// 주간 시간표
-function loadWeeklyTime(){
-    currentMode="time";
-    modalContent.innerHTML="불러오는 중...";
-    const dates=getWeekDates(currentWeek);
+        if(type==="meal"){
+            const res = await fetch(`https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${NEIS_API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${code.ATPT}&SD_SCHUL_CODE=${code.SD}&MLSV_YMD=${date}`);
+            const d = await res.json();
+            if(d.mealServiceDietInfo){
+                content = d.mealServiceDietInfo[1].row[0].DDISH_NM.replace(/<br\/>/g,"<br>");
+            }
+        }
 
-    getSchoolCode(userData.schoolName).then(code=>{
-        let html="";
-        dates.forEach(date=>{
-            fetch(`https://open.neis.go.kr/hub/hisTimetable?KEY=19f78fd07bfb4243a6333e7bf4641bfc&Type=json&ATPT_OFCDC_SC_CODE=${code.ATPT}&SD_SCHUL_CODE=${code.SD}&ALL_TI_YMD=${date}&GRADE=${userData.grade}`)
-            .then(r=>r.json())
-            .then(d=>{
-                let text="정보 없음";
-                if(d.hisTimetable){
-                    text="";
-                    d.hisTimetable[1].row.forEach(r=>{
-                        text+=r.PERIO+"교시 "+r.ITRT_CNTNT+"<br>";
-                    });
-                }
+        if(type==="time"){
+            const res = await fetch(`https://open.neis.go.kr/hub/hisTimetable?KEY=${NEIS_API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${code.ATPT}&SD_SCHUL_CODE=${code.SD}&ALL_TI_YMD=${date}&GRADE=${userData.grade}`);
+            const d = await res.json();
+            if(d.hisTimetable){
+                content="";
+                d.hisTimetable[1].row.forEach(r=>{
+                    content += `${r.PERIO}교시 ${r.ITRT_CNTNT}<br>`;
+                });
+            }
+        }
 
-                html+=`<div class="week-card"><b>${date}</b><br>${text}</div>`;
-                modalContent.innerHTML=html;
-            });
-        });
-    });
+        modalContent.innerHTML += `
+        <div class="week-card">
+            <b>${date}</b><br>${content}
+        </div>`;
+    }
 }
 
 // 모달
 function openMeal(){
     modal.style.display="flex";
-    loadWeeklyMeal();
-}
-function openTime(){
-    modal.style.display="flex";
-    loadWeeklyTime();
-}
-function closeModal(){
-    modal.style.display="none";
+    mode="meal";
+    loadWeek("meal");
 }
 
-// 다음주
+function openTime(){
+    modal.style.display="flex";
+    mode="time";
+    loadWeek("time");
+}
+
 function nextWeek(){
-    currentWeek++;
-    if(currentMode==="meal") loadWeeklyMeal();
-    else loadWeeklyTime();
+    weekOffset++;
+    loadWeek(mode);
+}
+
+function closeModal(){
+    modal.style.display="none";
 }
 </script>
 
