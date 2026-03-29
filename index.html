@@ -144,19 +144,20 @@ import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/1
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
 const firebaseConfig = {
-  apiKey: "여기",
-  authDomain: "여기",
-  databaseURL: "여기",
-  projectId: "여기",
-  messagingSenderId: "여기",
-  appId: "여기"
+  apiKey: "AIzaSyDa50OQMq30K_6IcA-fm0IAUO8S8UYXe3E",
+  authDomain: "ksthub-4840e.firebaseapp.com",
+  projectId: "ksthub-4840e",
+  storageBucket: "ksthub-4840e.firebasestorage.app",
+  messagingSenderId: "688445578736",
+  appId: "1:688445578736:web:6f1e29e1f3bae31c215135",
+  measurementId: "G-VL8CNHLPL0"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const messaging = getMessaging(app);
 
-const API_KEY = "여기";
+const API_KEY = "19f78fd07bfb4243a6333e7bf4641bfc";
 
 let currentUser = localStorage.getItem("user");
 let userData = null;
@@ -172,7 +173,7 @@ async function requestPermission(){
     if(permission !== "granted") return;
 
     const token = await getToken(messaging,{
-      vapidKey:"여기"
+      vapidKey:"BBy2KlFgNR2qmtS_1-EvtW9ClWEgk98RR4wfPRrIg7IuSo1n2A5xNhheQev_FBd-egHRjplo3cW9Gcyf95pnfd0"
     });
 
     console.log("토큰:",token);
