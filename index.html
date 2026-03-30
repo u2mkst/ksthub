@@ -22,7 +22,6 @@ body {
  padding:16px;
 }
 
-/* 카드 */
 .card {
  background:white;
  border-radius:18px;
@@ -31,7 +30,6 @@ body {
  box-shadow:0 6px 18px rgba(0,80,255,0.08);
 }
 
-/* 입력 */
 input, select, button {
  width:100%;
  height:48px;
@@ -42,31 +40,34 @@ input, select, button {
  font-size:15px;
 }
 
-/* 버튼 */
+/* 버튼 애니메이션 */
 button {
  background:#2563eb;
  color:white;
  border:none;
  font-weight:600;
+ transition:0.2s;
+}
+
+button:hover {
+ opacity:0.9;
 }
 
 button:active {
- transform:scale(0.98);
+ transform:scale(0.96);
 }
 
-/* 링크 버튼 */
-.link-btn {
- background:#111;
+.loading {
+ opacity:0.6;
+ pointer-events:none;
 }
 
-/* 인사 */
 #welcome {
  font-size:24px;
  font-weight:800;
  color:#1e3a8a;
 }
 
-/* 급식 */
 .meal-box {
  background:#f1f5ff;
  border-radius:12px;
@@ -75,7 +76,6 @@ button:active {
  line-height:1.6;
 }
 
-/* 시간표 */
 .time-row {
  display:flex;
  justify-content:space-between;
@@ -83,7 +83,6 @@ button:active {
  border-bottom:1px solid #e5e7eb;
 }
 
-/* 주간 */
 .week-card {
  background:#f8fbff;
  border-radius:12px;
@@ -91,11 +90,18 @@ button:active {
  margin-top:10px;
 }
 
-/* 학교 리스트 */
 #schoolList div, #editSchoolList div {
  padding:10px;
  border-bottom:1px solid #eee;
  cursor:pointer;
+}
+
+/* 로딩 */
+.loader {
+ text-align:center;
+ padding:20px;
+ font-weight:bold;
+ color:#2563eb;
 }
 </style>
 </head>
@@ -105,13 +111,11 @@ button:active {
 
 <h1 style="color:#2563eb;">KST HUB</h1>
 
-<!-- 로그인 -->
 <div id="loginPage" class="card">
 <input id="userId" placeholder="아이디 (ufes숫자)">
 <button onclick="login()">로그인</button>
 </div>
 
-<!-- 설정 -->
 <div id="setupPage" class="card" style="display:none;">
 <input id="nickname" placeholder="닉네임">
 
@@ -135,7 +139,6 @@ button:active {
 <button onclick="saveProfile()">시작하기</button>
 </div>
 
-<!-- 홈 -->
 <div id="homePage" style="display:none;">
 
 <div class="card">
@@ -148,7 +151,6 @@ button:active {
 <div id="meal" class="meal-box"></div>
 
 <button onclick="shareMealToday()">카톡 공유</button>
-
 <button onclick="toggleWeekMeal()" id="mealBtn">일주일 급식 보기</button>
 <div id="weekMeal"></div>
 </div>
@@ -163,20 +165,17 @@ button:active {
 
 <div class="card">
 <button onclick="openMyPage()">마이페이지</button>
+<button onclick="logout()">로그아웃</button>
 </div>
 
 </div>
 
-<!-- 마이페이지 -->
 <div id="mypage" class="card" style="display:none;">
 <h3>마이페이지</h3>
 
 <input id="editNickname">
-
 <select id="editGradeType">
-<option>초등</option>
-<option>중등</option>
-<option>고등</option>
+<option>초등</option><option>중등</option><option>고등</option>
 </select>
 
 <input id="editSchoolInput">
@@ -197,7 +196,7 @@ button:active {
 </div>
 
 <script>
-// 🔥 설정
+// 설정
 const firebaseConfig = {
   apiKey: "AIzaSyDa50OQMq30K_6IcA-fm0IAUO8S8UYXe3E",
   authDomain: "ksthub-4840e.firebaseapp.com",
@@ -212,74 +211,166 @@ const NEIS_API_KEY="19f78fd07bfb4243a6333e7bf4641bfc";
 firebase.initializeApp(firebaseConfig);
 const db=firebase.firestore();
 
-// 카카오 초기화
 Kakao.init('1074f182720545c67909372a924b23bb');
 
-// 이하 기존 코드 그대로 (login, loadMeal 등 동일)
+// 로그인
+async function login(){
+ const btn = event.target;
+ btn.classList.add("loading");
 
-// 🔥 카톡 공유 (오늘)
-function shareMealToday(){
- const text = `${currentUserData.schoolName}
-오늘 급식 🍱
+ const id = userId.value;
 
-${meal.innerText}
-
--KST HUB-`;
-
- Kakao.Share.sendDefault({
-  objectType:'text',
-  text:text,
-  link:{
-   mobileWebUrl:location.href,
-   webUrl:location.href
-  }
- });
-}
-
-// 🔥 주간 급식 (공유 버튼 포함)
-async function loadWeekMeal(){
- const dates=getWeek();
- let html="";
-
- for(let d of dates){
-  const res=await fetch(`https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${NEIS_API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${currentUserData.officeCode}&SD_SCHUL_CODE=${currentUserData.schoolCode}&MLSV_YMD=${d}`);
-  const data=await res.json();
-
-  let mealText="급식 없음";
-
-  if(data.mealServiceDietInfo){
-   mealText=data.mealServiceDietInfo[1].row[0].DDISH_NM.replace(/<br\/>/g,"<br>");
-  }
-
-  html+=`
-  <div class="week-card">
-  <b>${d.slice(4,6)}/${d.slice(6)}</b><br>
-  ${mealText}
-  <button onclick="shareMeal('${d}','${mealText.replace(/'/g,"")}')">공유</button>
-  </div>
-  `;
+ if(!id){
+  alert("아이디 입력");
+  btn.classList.remove("loading");
+  return;
  }
 
- weekMeal.innerHTML=html;
+ const doc = await db.collection("users").doc(id).get();
+
+ if(!doc.exists){
+  loginPage.style.display="none";
+  setupPage.style.display="block";
+  window.currentUser=id;
+ } else {
+  localStorage.setItem("loginUser",id);
+  loadHome(doc.data());
+ }
+
+ btn.classList.remove("loading");
 }
 
-// 🔥 날짜별 공유
-function shareMeal(date, mealData){
- const text = `${currentUserData.schoolName}
-${date.slice(4,6)}월 ${date.slice(6)}일 급식 🍱
+// 자동로그인
+window.onload = async()=>{
+ const id=localStorage.getItem("loginUser");
+ if(!id)return;
 
-${mealData.replace(/<br>/g,"\n")}
+ const doc=await db.collection("users").doc(id).get();
+ if(doc.exists) loadHome(doc.data());
+};
 
--KST HUB-`;
+// 학교 검색
+let selectedSchool=null;
 
+schoolInput.addEventListener("input",async()=>{
+ const keyword=schoolInput.value;
+ if(keyword.length<2)return;
+
+ const res=await fetch(`https://open.neis.go.kr/hub/schoolInfo?KEY=${NEIS_API_KEY}&Type=json&SCHUL_NM=${keyword}`);
+ const data=await res.json();
+
+ if(!data.schoolInfo)return;
+
+ schoolList.innerHTML="";
+ data.schoolInfo[1].row.forEach(s=>{
+  const div=document.createElement("div");
+  div.innerText=`${s.SCHUL_NM} (${s.LCTN_SC_NM})`;
+
+  div.onclick=()=>{
+   selectedSchool={
+    name:s.SCHUL_NM,
+    code:s.SD_SCHUL_CODE,
+    office:s.ATPT_OFCDC_SC_CODE
+   };
+   schoolInput.value=s.SCHUL_NM;
+   schoolList.innerHTML="";
+  };
+
+  schoolList.appendChild(div);
+ });
+});
+
+// 저장
+async function saveProfile(){
+ if(!selectedSchool){
+  alert("학교 선택");
+  return;
+ }
+
+ const data={
+  nickname:nickname.value,
+  gradeType:gradeType.value,
+  schoolName:selectedSchool.name,
+  schoolCode:selectedSchool.code,
+  officeCode:selectedSchool.office,
+  grade:grade.value.replace("학년",""),
+  classNum:classNum.value
+ };
+
+ await db.collection("users").doc(window.currentUser).set(data);
+ localStorage.setItem("loginUser",window.currentUser);
+ loadHome(data);
+}
+
+// 홈
+function loadHome(user){
+ currentUserData=user;
+
+ loginPage.style.display="none";
+ setupPage.style.display="none";
+ homePage.style.display="block";
+
+ welcome.innerText=user.nickname+"님 반가워요";
+ schoolInfo.innerText=`${user.schoolName} ${user.grade}학년 ${user.classNum}반`;
+
+ loadMeal(user);
+ loadTimetable(user);
+}
+
+// 급식
+async function loadMeal(user){
+ meal.innerHTML="<div class='loader'>불러오는 중...</div>";
+
+ const today=new Date().toISOString().slice(0,10).replace(/-/g,'');
+
+ const res=await fetch(`https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${NEIS_API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${user.officeCode}&SD_SCHUL_CODE=${user.schoolCode}&MLSV_YMD=${today}`);
+ const data=await res.json();
+
+ if(!data.mealServiceDietInfo){
+  meal.innerText="급식 없음"; return;
+ }
+
+ meal.innerHTML=data.mealServiceDietInfo[1].row[0].DDISH_NM.replace(/<br\/>/g,"<br>");
+}
+
+// 시간표
+async function loadTimetable(user){
+ timetable.innerHTML="<div class='loader'>불러오는 중...</div>";
+
+ let type="hisTimetable";
+ if(user.gradeType==="초등") type="elsTimetable";
+ if(user.gradeType==="중등") type="misTimetable";
+
+ const today=new Date().toISOString().slice(0,10).replace(/-/g,'');
+
+ const res=await fetch(`https://open.neis.go.kr/hub/${type}?KEY=${NEIS_API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${user.officeCode}&SD_SCHUL_CODE=${user.schoolCode}&ALL_TI_YMD=${today}&GRADE=${user.grade}&CLASS_NM=${user.classNum}`);
+ const data=await res.json();
+
+ if(!data[type]){
+  timetable.innerText="시간표 없음"; return;
+ }
+
+ let html="";
+ data[type][1].row.forEach(r=>{
+  html+=`<div class="time-row"><span>${r.PERIO}교시</span><span>${r.ITRT_CNTNT}</span></div>`;
+ });
+
+ timetable.innerHTML=html;
+}
+
+// 공유
+function shareMealToday(){
  Kakao.Share.sendDefault({
   objectType:'text',
-  text:text,
-  link:{
-   mobileWebUrl:location.href,
-   webUrl:location.href
-  }
+  text:`${currentUserData.schoolName}\n오늘 급식 🍱\n\n${meal.innerText}`,
+  link:{ mobileWebUrl:location.href, webUrl:location.href }
  });
+}
+
+// 기타
+function logout(){
+ localStorage.removeItem("loginUser");
+ location.reload();
 }
 </script>
 
