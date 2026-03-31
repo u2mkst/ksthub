@@ -290,11 +290,29 @@ function shareToday(){
  });
 }
 
-function shareDate(d){
+async function shareDate(d){
+
+ // 🔥 급식 다시 불러오기
+ const res = await fetch(`https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${NEIS_API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${user.officeCode}&SD_SCHUL_CODE=${user.schoolCode}&MLSV_YMD=${d}`);
+ const data = await res.json();
+
+ let mealText = "급식 없음";
+
+ if(data.mealServiceDietInfo){
+  mealText = cleanMeal(data.mealServiceDietInfo[1].row[0].DDISH_NM);
+ }
+
+ // 🔥 카톡 전송
  Kakao.Share.sendDefault({
   objectType:'text',
-  text:`${user.schoolName} ${d.slice(4,6)}월 ${d.slice(6)}일 급식`,
-  link:{mobileWebUrl:getMainLink(),webUrl:getMainLink()}
+  text:`${user.schoolName}
+${d.slice(4,6)}월 ${d.slice(6)}일 급식 🍱
+
+${mealText}`,
+  link:{
+   mobileWebUrl:getMainLink(),
+   webUrl:getMainLink()
+  }
  });
 }
 
