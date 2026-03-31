@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>로그인</title>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<style>
+body{font-family:Pretendard;background:#f5f7fb;margin:0;}
+.container{max-width:420px;margin:auto;padding:20px;}
+.card{background:white;padding:20px;border-radius:16px;}
+input,button{width:100%;height:45px;margin-top:10px;}
+</style>
+</head>
+
+<body>
+<div class="container">
+<div class="card">
+<h2>KST HUB 로그인</h2>
+<input id="id" placeholder="아이디">
+<button onclick="login()">로그인</button>
+</div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDa50OQMq30K_6IcA-fm0IAUO8S8UYXe3E",
+  authDomain: "ksthub-4840e.firebaseapp.com",
+  projectId: "ksthub-4840e",
+  storageBucket: "ksthub-4840e.firebasestorage.app",
+  messagingSenderId: "688445578736",
+  appId: "1:688445578736:web:6f1e29e1f3bae31c215135",
+  measurementId: "G-VL8CNHLPL0"
+};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.firestore();
+
+async function login(){
+ const val=id.value;
+ const doc=await db.collection("users").doc(val).get();
+
+ if(doc.exists){
+  localStorage.setItem("loginUser",val);
+  location.href="index.html";
+ }else{
+  alert("회원가입 필요");
+ }
+}
+</script>
+
+</body>
+</html>
