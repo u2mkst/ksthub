@@ -306,21 +306,13 @@ async function shareDate(d){
  Kakao.Share.sendDefault({
   objectType:'text',
   text:`${user.schoolName}
-${d.slice(4,6)}월 ${d.slice(6)}일 급식 🍱
+${d.slice(4,6)}월 ${d.slice(6)}일 급식 🍽
 
 ${mealText}`,
   link:{
    mobileWebUrl:getMainLink(),
    webUrl:getMainLink()
   }
- });
-}
-
-function shareWeek(){
- Kakao.Share.sendDefault({
-  objectType:'text',
-  text:`${user.schoolName} 이번 주 급식 확인`,
-  link:{mobileWebUrl:getMainLink(),webUrl:getMainLink()}
  });
 }
 
