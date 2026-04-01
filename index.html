@@ -5,96 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KST HUB</title>
 
+<!-- 🔥 환경변수 -->
+<script src="env.js"></script>
+
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script src="https://developers.kakao.com/sdk/js/kakao.js"></script>
 
 <style>
 :root{
- --bg:#f5f7fb;
- --card:#ffffff;
+ --bg:#f8fbff;
+ --card:#fff;
  --text:#111;
- --sub:#555;
+ --primary:#2563eb;
 }
 .dark{
- --bg:#0f172a;
- --card:#1e293b;
- --text:#f1f5f9;
- --sub:#cbd5f5;
+ --bg:#020617;
+ --card:#0f172a;
+ --text:#e2e8f0;
+ --primary:#3b82f6;
 }
-body{
- margin:0;
- font-family:Pretendard;
- background:var(--bg);
- color:var(--text);
- transition:0.3s;
-}
+body{margin:0;font-family:Pretendard;background:var(--bg);color:var(--text);transition:.3s;}
 .container{max-width:420px;margin:auto;padding:16px;}
+.card{background:var(--card);border-radius:16px;padding:16px;margin-top:12px;box-shadow:0 6px 18px rgba(0,0,0,.08);}
 
-.card{
- background:var(--card);
- border-radius:14px;
- padding:14px;
- margin-top:12px;
- box-shadow:0 4px 12px rgba(0,0,0,0.08);
-}
+.btn{width:100%;height:44px;border:none;border-radius:12px;background:var(--primary);color:white;margin-top:10px;}
+.sub-btn{height:32px;font-size:12px;background:#e0ecff;color:#2563eb;}
+.dark .sub-btn{background:#1e3a8a;color:white;}
 
-.small-btn{
- font-size:12px;
- height:32px;
- margin-top:8px;
- background:#e5e7eb;
- color:#111;
-}
-.dark .small-btn{
- background:#334155;
- color:#fff;
-}
+.week-card{font-size:13px;padding:10px;margin-top:8px;border-radius:10px;background:#eef5ff;}
+.dark .week-card{background:#1e293b;}
 
-.week-card{
- font-size:13px;
- padding:10px;
- margin-top:8px;
- border-radius:10px;
- background:#f1f5f9;
-}
-.dark .week-card{
- background:#334155;
-}
-
-/* 버튼 */
-.floating{
- position:fixed;
- bottom:20px;
- width:55px;height:55px;
- border-radius:50%;
- display:flex;
- align-items:center;
- justify-content:center;
- font-size:22px;
- box-shadow:0 5px 15px rgba(0,0,0,0.2);
-}
+.floating{position:fixed;bottom:20px;width:55px;height:55px;border-radius:50%;display:flex;align-items:center;justify-content:center;}
 .share-btn{left:20px;background:#fee500;}
 .dark-btn{right:20px;background:#111;color:white;}
 
-/* 모달 */
-#modal{
- display:none;
- position:fixed;
- bottom:0;
- left:0;
- right:0;
- background:var(--card);
- padding:20px;
- border-radius:20px 20px 0 0;
-}
-#modal button{
- width:100%;
- height:45px;
- margin-top:8px;
- border:none;
- border-radius:10px;
-}
+#mypage{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#0008;}
+#mypage .box{background:var(--card);margin:80px 20px;padding:20px;border-radius:16px;}
 </style>
 </head>
 
@@ -105,121 +52,97 @@ body{
 
 <div class="card">
 <p id="welcome"></p>
-<p id="schoolInfo" style="color:var(--sub)"></p>
+<p id="schoolInfo"></p>
 </div>
 
 <div class="card">
 <h4>🍱 오늘 급식</h4>
 <div id="meal"></div>
-<button class="small-btn" onclick="toggleMeal()">자세히 보기</button>
+<button class="btn sub-btn" onclick="toggleMeal()">자세히 보기</button>
 <div id="weekMeal"></div>
 </div>
 
 <div class="card">
 <h4>📚 오늘 시간표</h4>
 <div id="timetable"></div>
-<button class="small-btn" onclick="toggleTime()">자세히 보기</button>
+<button class="btn sub-btn" onclick="toggleTime()">자세히 보기</button>
 <div id="weekTime"></div>
 </div>
 
 <div class="card">
-<button onclick="openMy()">마이페이지</button>
+<button class="btn" onclick="openMy()">마이페이지</button>
 </div>
 
 </div>
 
-<!-- 플로팅 -->
-<div class="floating share-btn" onclick="openModal()">💬</div>
+<div class="floating share-btn" onclick="shareToday()">💬</div>
 <div class="floating dark-btn" onclick="toggleDark()">🌙</div>
 
-<!-- 모달 -->
-<div id="modal">
-<h3>공유</h3>
-<button onclick="shareToday()">오늘 급식</button>
-<button onclick="shareWeek()">이번 주</button>
-<button onclick="shareLink()">링크</button>
-<button onclick="closeModal()">닫기</button>
-</div>
-
-<!-- 마이페이지 -->
-<div id="mypage" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#0008;">
- <div style="background:white;margin:80px 20px;padding:20px;border-radius:14px;">
+<div id="mypage">
+ <div class="box">
   <h3>마이페이지</h3>
-  <button onclick="logout()">로그아웃</button>
-  <button onclick="closeMy()">닫기</button>
+  <input id="editNick" placeholder="닉네임 변경">
+  <button class="btn" onclick="updateProfile()">정보 수정</button>
+  <button class="btn" onclick="logout()">로그아웃</button>
+  <button class="btn sub-btn" onclick="closeMy()">닫기</button>
  </div>
 </div>
 
 <script>
-const firebaseConfig = {
-  apiKey: "AIzaSyDa50OQMq30K_6IcA-fm0IAUO8S8UYXe3E",
-  authDomain: "ksthub-4840e.firebaseapp.com",
-  projectId: "ksthub-4840e",
-  storageBucket: "ksthub-4840e.firebasestorage.app",
-  messagingSenderId: "688445578736",
-  appId: "1:688445578736:web:6f1e29e1f3bae31c215135",
-  measurementId: "G-VL8CNHLPL0"
+// 🔥 ENV 사용
+const firebaseConfig={
+ apiKey: ENV.FIREBASE_API_KEY,
+ projectId: ENV.FIREBASE_PROJECT_ID
 };
 firebase.initializeApp(firebaseConfig);
 const db=firebase.firestore();
 
-const NEIS_API_KEY="19f78fd07bfb4243a6333e7bf4641bfc";
-Kakao.init('1074f182720545c67909372a924b23bb');
+const NEIS_API_KEY=ENV.NEIS_API_KEY;
+Kakao.init(ENV.KAKAO_JS_KEY);
 
-let user, mealOpen=false, timeOpen=false;
+let user,mealOpen=false,weekOffset=0;
 
-// 🔥 알레르기 제거
-function cleanMeal(text){
- return text
-  .replace(/<br\/>/g,"\n")
-  .replace(/\([0-9.]+\)/g,"")
-  .replace(/[0-9.]/g,"");
+// 다크모드 저장
+if(localStorage.getItem("dark")=="1"){document.body.classList.add("dark");}
+
+// 급식 정리
+function cleanMeal(t){
+ return t.replace(/<br\/>/g,"\n")
+         .replace(/\([0-9.]+\)/g,"")
+         .replace(/[0-9.]/g,"");
 }
 
 // 로그인 체크
 window.onload=async()=>{
  const id=localStorage.getItem("loginUser");
- if(!id){ location.href="login.html"; return; }
+ if(!id){location.href="login.html";return;}
 
  const doc=await db.collection("users").doc(id).get();
- if(!doc.exists){ location.href="login.html"; return; }
+ if(!doc.exists){location.href="login.html";return;}
 
  user=doc.data();
-
  welcome.innerText=user.nickname+"님 반가워요";
  schoolInfo.innerText=`${user.schoolName} ${user.grade}학년 ${user.classNum}반`;
 
  loadToday();
 };
 
-// 오늘 데이터
+// 오늘 급식
 async function loadToday(){
  const today=new Date().toISOString().slice(0,10).replace(/-/g,'');
 
- // 급식
- const m=await fetch(`https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${NEIS_API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${user.officeCode}&SD_SCHUL_CODE=${user.schoolCode}&MLSV_YMD=${today}`);
- const md=await m.json();
+ const res=await fetch(`https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${NEIS_API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${user.officeCode}&SD_SCHUL_CODE=${user.schoolCode}&MLSV_YMD=${today}`);
+ const data=await res.json();
 
- meal.innerHTML = md.mealServiceDietInfo
-  ? cleanMeal(md.mealServiceDietInfo[1].row[0].DDISH_NM).replace(/\n/g,"<br>")
-  : "없음";
-
- // 🔥 시간표 (학교급별)
- let type="hisTimetable";
- if(user.gradeType==="초등") type="elsTimetable";
- if(user.gradeType==="중등") type="misTimetable";
-
- const t=await fetch(`https://open.neis.go.kr/hub/${type}?KEY=${NEIS_API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${user.officeCode}&SD_SCHUL_CODE=${user.schoolCode}&ALL_TI_YMD=${today}&GRADE=${user.grade}&CLASS_NM=${user.classNum}`);
- const td=await t.json();
-
- timetable.innerHTML = td[type]
-  ? td[type][1].row.map(r=>`${r.PERIO}교시 - ${r.ITRT_CNTNT}`).join("<br>")
-  : "없음";
+ meal.innerHTML=data.mealServiceDietInfo
+ ? cleanMeal(data.mealServiceDietInfo[1].row[0].DDISH_NM).replace(/\n/g,"<br>")
+ : "없음";
 }
 
 // 주간
 function getWeek(){
  const now=new Date();
+ now.setDate(now.getDate()+weekOffset*7);
  const monday=new Date(now.setDate(now.getDate()-now.getDay()+1));
  let arr=[];
  for(let i=0;i<5;i++){
@@ -230,12 +153,16 @@ function getWeek(){
  return arr;
 }
 
-// 주간 급식
 async function toggleMeal(){
  if(mealOpen){weekMeal.innerHTML="";mealOpen=false;return;}
  mealOpen=true;
+ loadWeekMeal();
+}
 
- let html="";
+async function loadWeekMeal(){
+ let html=`<button onclick="changeWeek(-1)">◀</button>
+           <button onclick="changeWeek(1)">▶</button>`;
+
  for(let d of getWeek()){
   const res=await fetch(`https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${NEIS_API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${user.officeCode}&SD_SCHUL_CODE=${user.schoolCode}&MLSV_YMD=${d}`);
   const data=await res.json();
@@ -245,98 +172,47 @@ async function toggleMeal(){
    text=cleanMeal(data.mealServiceDietInfo[1].row[0].DDISH_NM);
   }
 
-  html+=`
-  <div class="week-card">
-   <b>${d.slice(4,6)}/${d.slice(6)}</b><br>
-   ${text.replace(/\n/g,"<br>")}
-   <button onclick="shareDate('${d}')">공유</button>
+  html+=`<div class="week-card">
+  <b>${d.slice(4,6)}/${d.slice(6)}</b><br>
+  ${text.replace(/\n/g,"<br>")}
   </div>`;
  }
  weekMeal.innerHTML=html;
 }
 
-// 주간 시간표
-async function toggleTime(){
- if(timeOpen){weekTime.innerHTML="";timeOpen=false;return;}
- timeOpen=true;
-
- let type="hisTimetable";
- if(user.gradeType==="초등") type="elsTimetable";
- if(user.gradeType==="중등") type="misTimetable";
-
- let html="";
- for(let d of getWeek()){
-  const res=await fetch(`https://open.neis.go.kr/hub/${type}?KEY=${NEIS_API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${user.officeCode}&SD_SCHUL_CODE=${user.schoolCode}&ALL_TI_YMD=${d}&GRADE=${user.grade}&CLASS_NM=${user.classNum}`);
-  const data=await res.json();
-
-  let text="없음";
-  if(data[type]){
-   text=data[type][1].row.map(r=>r.ITRT_CNTNT).join(", ");
-  }
-
-  html+=`<div class="week-card"><b>${d.slice(4,6)}/${d.slice(6)}</b><br>${text}</div>`;
- }
- weekTime.innerHTML=html;
+function changeWeek(n){
+ weekOffset+=n;
+ loadWeekMeal();
 }
 
-// 카톡
-function getMainLink(){ return location.origin; }
-
+// 카톡 공유
 function shareToday(){
  Kakao.Share.sendDefault({
   objectType:'text',
-  text:`${user.schoolName}\n오늘 급식\n\n${meal.innerText}`,
-  link:{mobileWebUrl:getMainLink(),webUrl:getMainLink()}
+  text:`${user.schoolName}\n오늘 급식 🍱\n\n${meal.innerText}`,
+  link:{mobileWebUrl:location.origin,webUrl:location.origin}
  });
 }
 
-async function shareDate(d){
-
- // 🔥 급식 다시 불러오기
- const res = await fetch(`https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${NEIS_API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${user.officeCode}&SD_SCHUL_CODE=${user.schoolCode}&MLSV_YMD=${d}`);
- const data = await res.json();
-
- let mealText = "급식 없음";
-
- if(data.mealServiceDietInfo){
-  mealText = cleanMeal(data.mealServiceDietInfo[1].row[0].DDISH_NM);
- }
-
- // 🔥 카톡 전송
- Kakao.Share.sendDefault({
-  objectType:'text',
-  text:`${user.schoolName}
-${d.slice(4,6)}월 ${d.slice(6)}일 급식 🍽
-
-${mealText}`,
-  link:{
-   mobileWebUrl:getMainLink(),
-   webUrl:getMainLink()
-  }
- });
+// 다크모드
+function toggleDark(){
+ document.body.classList.toggle("dark");
+ localStorage.setItem("dark",document.body.classList.contains("dark")?"1":"0");
 }
-
-function shareLink(){
- Kakao.Share.sendDefault({
-  objectType:'text',
-  text:`KST HUB\n${getMainLink()}`,
-  link:{mobileWebUrl:getMainLink(),webUrl:getMainLink()}
- });
-}
-
-// UI
-function openModal(){modal.style.display="block";}
-function closeModal(){modal.style.display="none";}
-function toggleDark(){document.body.classList.toggle("dark");}
 
 // 마이페이지
 function openMy(){mypage.style.display="block";}
 function closeMy(){mypage.style.display="none";}
+async function updateProfile(){
+ await db.collection("users").doc(localStorage.getItem("loginUser")).update({
+  nickname:editNick.value
+ });
+ alert("수정 완료");
+}
 function logout(){
  localStorage.removeItem("loginUser");
  location.href="login.html";
 }
 </script>
-
 </body>
 </html>
