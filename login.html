@@ -10,7 +10,7 @@
 
 <style>
 :root{
- --bg:#f5f7fb;
+ --bg:#f8fbff;
  --card:#ffffff;
  --text:#111;
  --primary:#2563eb;
@@ -40,7 +40,6 @@ input, select{
  border-radius:12px;
  border:1px solid #ddd;
  padding-left:10px;
- font-size:14px;
 }
 
 button{
@@ -58,10 +57,6 @@ button{
  padding:8px;
  border-bottom:1px solid #eee;
  cursor:pointer;
- font-size:14px;
-}
-#schoolList div:hover{
- background:#f1f5f9;
 }
 </style>
 </head>
@@ -74,12 +69,11 @@ button{
 <h2>KST HUB</h2>
 <input id="loginId" placeholder="아이디 (ufes숫자)">
 <button onclick="login()">로그인</button>
-<button onclick="showSignup()" style="background:#e5e7eb;color:#111;">회원가입</button>
 </div>
 
-<!-- 회원가입 -->
-<div class="card" id="signupBox" style="display:none;">
-<h2>회원가입</h2>
+<!-- 최초 설정 -->
+<div class="card" id="setupBox" style="display:none;">
+<h2>기본 설정</h2>
 
 <input id="nickname" placeholder="닉네임">
 
@@ -95,17 +89,17 @@ button{
 <select id="grade"></select>
 <select id="classNum"></select>
 
-<button onclick="signup()">가입하기</button>
-<button onclick="showLogin()" style="background:#e5e7eb;color:#111;">뒤로가기</button>
+<button onclick="saveSetup()">시작하기</button>
 </div>
 
 </div>
 
 <script>
-// 🔥 Firebase
+// Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDa50OQMq30K_6IcA-fm0IAUO8S8UYXe3E",
   authDomain: "ksthub-4840e.firebaseapp.com",
+  databaseURL: "https://ksthub-4840e-default-rtdb.firebaseio.com",
   projectId: "ksthub-4840e",
   storageBucket: "ksthub-4840e.firebasestorage.app",
   messagingSenderId: "688445578736",
@@ -119,59 +113,41 @@ const NEIS_API_KEY="19f78fd07bfb4243a6333e7bf4641bfc";
 
 let selectedSchool=null;
 
-// 👉 로그인
+// 🔥 로그인
 async function login(){
  const id=loginId.value.trim();
-
- if(!id){
-  alert("아이디 입력");
-  return;
- }
+ if(!id){ alert("아이디 입력"); return; }
 
  const doc=await db.collection("users").doc(id).get();
 
+ // 👉 있으면 바로 홈
  if(doc.exists){
   localStorage.setItem("loginUser",id);
   location.href="index.html";
- }else{
-  alert("회원가입 먼저 해주세요");
+ } 
+ // 👉 없으면 설정 화면
+ else{
+  loginBox.style.display="none";
+  setupBox.style.display="block";
+  initSelect();
  }
 }
 
-// 👉 화면 전환
-function showSignup(){
- loginBox.style.display="none";
- signupBox.style.display="block";
- initSelect();
-}
-function showLogin(){
- signupBox.style.display="none";
- loginBox.style.display="block";
-}
-
-// 👉 학년/반 자동 생성
+// 🔥 학년/반
 function initSelect(){
  grade.innerHTML="";
  classNum.innerHTML="";
 
- // 학년
  for(let i=1;i<=6;i++){
-  let opt=document.createElement("option");
-  opt.value=i;
-  opt.text=i+"학년";
-  grade.appendChild(opt);
+  grade.innerHTML+=`<option>${i}</option>`;
  }
 
- // 반 (1~15)
  for(let i=1;i<=15;i++){
-  let opt=document.createElement("option");
-  opt.value=i;
-  opt.text=i+"반";
-  classNum.appendChild(opt);
+  classNum.innerHTML+=`<option>${i}</option>`;
  }
 }
 
-// 👉 학교 자동완성
+// 🔥 학교 검색
 schoolInput.addEventListener("input", async ()=>{
  const keyword=schoolInput.value;
  if(keyword.length<2) return;
@@ -197,8 +173,8 @@ schoolInput.addEventListener("input", async ()=>{
  });
 });
 
-// 👉 회원가입
-async function signup(){
+// 🔥 저장
+async function saveSetup(){
 
  if(!selectedSchool){
   alert("학교 선택");
@@ -207,12 +183,7 @@ async function signup(){
 
  const id=loginId.value.trim();
 
- if(!id){
-  alert("아이디 먼저 입력");
-  return;
- }
-
- const data={
+ await db.collection("users").doc(id).set({
   nickname:nickname.value,
   gradeType:gradeType.value,
   schoolName:selectedSchool.SCHUL_NM,
@@ -220,9 +191,7 @@ async function signup(){
   officeCode:selectedSchool.ATPT_OFCDC_SC_CODE,
   grade:grade.value,
   classNum:classNum.value
- };
-
- await db.collection("users").doc(id).set(data);
+ });
 
  localStorage.setItem("loginUser",id);
  location.href="index.html";
