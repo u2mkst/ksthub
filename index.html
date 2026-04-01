@@ -90,7 +90,14 @@ input,select{
 <!-- 공유 -->
 <div id="shareModal">
  <div class="modal-box">
-  <button class="btn" onclick="shareToday()">오늘 급식 공유</button>
+  <h3>공유</h3>
+
+  <button class="btn" onclick="shareToday()">오늘 급식</button>
+
+  <!-- 🔥 추가 -->
+  <input type="date" id="shareDateInput">
+  <button class="btn" onclick="shareSelectedDate()">선택한 날짜 급식 공유</button>
+
   <button class="btn sub-btn" onclick="closeShare()">닫기</button>
  </div>
 </div>
@@ -280,6 +287,40 @@ function shareToday(){
   objectType:'text',
   text:`${user.schoolName}\n오늘 급식\n\n${meal.innerText}`,
   link:{mobileWebUrl:location.origin,webUrl:location.origin}
+ });
+}
+
+// 🔥👇 여기 추가 (같은 레벨, 함수 밖 X)
+async function shareSelectedDate(){
+
+ const input = document.getElementById("shareDateInput").value;
+
+ if(!input){
+  alert("날짜 선택해줘");
+  return;
+ }
+
+ const date = input.replace(/-/g,'');
+
+ const res = await fetch(`https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${NEIS_API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${user.officeCode}&SD_SCHUL_CODE=${user.schoolCode}&MLSV_YMD=${date}`);
+ const data = await res.json();
+
+ let mealText = "급식 없음";
+
+ if(data.mealServiceDietInfo){
+  mealText = cleanMeal(data.mealServiceDietInfo[1].row[0].DDISH_NM);
+ }
+
+ Kakao.Share.sendDefault({
+  objectType:'text',
+  text:`${user.schoolName}
+${input} 급식 🍱
+
+${mealText}`,
+  link:{
+   mobileWebUrl:location.origin,
+   webUrl:location.origin
+  }
  });
 }
 
