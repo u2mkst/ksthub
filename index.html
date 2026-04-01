@@ -12,7 +12,7 @@
 <style>
 :root{
  --bg:#f8fbff;
- --card:#ffffff;
+ --card:#fff;
  --text:#111;
  --primary:#2563eb;
 }
@@ -22,87 +22,34 @@
  --text:#e2e8f0;
  --primary:#3b82f6;
 }
-body{
- margin:0;
- font-family:Pretendard;
- background:var(--bg);
- color:var(--text);
- transition:0.3s;
-}
+body{margin:0;font-family:Pretendard;background:var(--bg);color:var(--text);}
 .container{max-width:420px;margin:auto;padding:16px;}
+.card{background:var(--card);border-radius:16px;padding:16px;margin-top:12px;}
 
-.card{
- background:var(--card);
- border-radius:16px;
- padding:16px;
- margin-top:12px;
- box-shadow:0 6px 18px rgba(0,0,0,0.08);
-}
+#welcome{font-size:22px;font-weight:700;}
 
-/* 버튼 디자인 개선 */
-.btn{
- width:100%;
- height:44px;
- border:none;
- border-radius:12px;
- background:var(--primary);
- color:white;
- font-weight:600;
- margin-top:10px;
- transition:0.2s;
-}
-.btn:active{transform:scale(0.95);}
+.btn{width:100%;height:44px;border:none;border-radius:12px;background:var(--primary);color:white;margin-top:10px;}
+.sub-btn{height:32px;font-size:12px;background:#e0ecff;color:#2563eb;}
+.dark .sub-btn{background:#1e3a8a;color:white;}
 
-.sub-btn{
- height:32px;
- font-size:12px;
- background:#e0ecff;
- color:#2563eb;
-}
-.dark .sub-btn{
- background:#1e3a8a;
- color:#fff;
-}
+.week-card{font-size:13px;padding:10px;margin-top:8px;border-radius:10px;background:#eef5ff;}
+.dark .week-card{background:#1e293b;}
 
-/* 주간 카드 */
-.week-card{
- font-size:13px;
- padding:10px;
- margin-top:8px;
- border-radius:10px;
- background:#eef5ff;
-}
-.dark .week-card{
- background:#1e293b;
-}
-
-/* 플로팅 */
-.floating{
- position:fixed;
- bottom:20px;
- width:55px;height:55px;
- border-radius:50%;
- display:flex;
- align-items:center;
- justify-content:center;
- font-size:22px;
- box-shadow:0 5px 15px rgba(0,0,0,0.2);
-}
+.floating{position:fixed;bottom:20px;width:55px;height:55px;border-radius:50%;display:flex;align-items:center;justify-content:center;}
 .share-btn{left:20px;background:#fee500;}
 .dark-btn{right:20px;background:#111;color:white;}
 
-/* 마이페이지 팝업 */
-#mypage{
- display:none;
- position:fixed;
- top:0;left:0;right:0;bottom:0;
- background:#0008;
+#shareModal,#mypage{
+ display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#0008;
 }
-#mypage .box{
- background:var(--card);
- margin:80px 20px;
- padding:20px;
- border-radius:16px;
+.modal-box{
+ background:var(--card);margin:80px 20px;padding:20px;border-radius:16px;
+}
+input,select{
+ width:100%;height:40px;margin-top:8px;border-radius:8px;border:1px solid #ddd;padding-left:8px;
+}
+#schoolList div{
+ padding:8px;border-bottom:1px solid #eee;cursor:pointer;
 }
 </style>
 </head>
@@ -120,15 +67,6 @@ body{
 <div class="card">
 <h4>🍱 오늘 급식</h4>
 <div id="meal"></div>
-<button class="btn sub-btn" onclick="toggleMeal()">자세히 보기</button>
-<div id="weekMeal"></div>
-</div>
-
-<div class="card">
-<h4>📚 오늘 시간표</h4>
-<div id="timetable"></div>
-<button class="btn sub-btn" onclick="toggleTime()">자세히 보기</button>
-<div id="weekTime"></div>
 </div>
 
 <div class="card">
@@ -137,23 +75,38 @@ body{
 
 </div>
 
-<div class="floating share-btn" onclick="shareToday()">💬</div>
+<div class="floating share-btn" onclick="openShare()">💬</div>
 <div class="floating dark-btn" onclick="toggleDark()">🌙</div>
+
+<!-- 공유 -->
+<div id="shareModal">
+ <div class="modal-box">
+  <button class="btn" onclick="shareToday()">오늘 급식 공유</button>
+  <button class="btn sub-btn" onclick="closeShare()">닫기</button>
+ </div>
+</div>
 
 <!-- 마이페이지 -->
 <div id="mypage">
- <div class="box">
+ <div class="modal-box">
   <h3>마이페이지</h3>
 
-  <input id="editNick" placeholder="닉네임 변경">
-  <button class="btn" onclick="updateProfile()">정보 수정</button>
+  <input id="editNick" placeholder="닉네임">
 
+  <input id="schoolInput" placeholder="학교 검색">
+  <div id="schoolList"></div>
+
+  <select id="editGrade"></select>
+  <select id="editClass"></select>
+
+  <button class="btn" onclick="saveMy()">저장</button>
   <button class="btn" onclick="logout()">로그아웃</button>
   <button class="btn sub-btn" onclick="closeMy()">닫기</button>
  </div>
 </div>
 
 <script>
+// 🔥 직접 입력
 const firebaseConfig = {
   apiKey: "AIzaSyDa50OQMq30K_6IcA-fm0IAUO8S8UYXe3E",
   authDomain: "ksthub-4840e.firebaseapp.com",
@@ -168,109 +121,53 @@ firebase.initializeApp(firebaseConfig);
 const db=firebase.firestore();
 
 const NEIS_API_KEY="19f78fd07bfb4243a6333e7bf4641bfc";
-Kakao.init('1074f182720545c67909372a924b23bb');
+Kakao.init("1074f182720545c67909372a924b23bb");
 
-let user, mealOpen=false, timeOpen=false;
-let weekOffset=0;
+let user, selectedSchool=null;
 
-// 🔥 다크모드 저장
-if(localStorage.getItem("dark")=="1"){
- document.body.classList.add("dark");
-}
+// 다크모드 저장
+if(localStorage.getItem("dark")=="1") document.body.classList.add("dark");
 
-// 알레르기 제거
+// 급식 정리
 function cleanMeal(t){
- return t.replace(/<br\/>/g,"\n")
-         .replace(/\([0-9.]+\)/g,"")
-         .replace(/[0-9.]/g,"");
+ return t.replace(/<br\/>/g,"\n").replace(/\([0-9.]+\)/g,"").replace(/[0-9.]/g,"");
 }
 
 // 로그인 체크
 window.onload=async()=>{
  const id=localStorage.getItem("loginUser");
- if(!id){ location.href="login.html"; return; }
+ if(!id){location.href="login.html";return;}
 
  const doc=await db.collection("users").doc(id).get();
-
- // 🔥 설정 없으면 설정 페이지로
- if(!doc.exists){
-  location.href="setup.html";
-  return;
- }
-
  user=doc.data();
 
  welcome.innerText=user.nickname+"님 반가워요";
  schoolInfo.innerText=`${user.schoolName} ${user.grade}학년 ${user.classNum}반`;
 
  loadToday();
+ initSelect();
 };
 
-// 오늘
+// 급식
 async function loadToday(){
  const today=new Date().toISOString().slice(0,10).replace(/-/g,'');
 
- const m=await fetch(`https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${NEIS_API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${user.officeCode}&SD_SCHUL_CODE=${user.schoolCode}&MLSV_YMD=${today}`);
- const md=await m.json();
+ const res=await fetch(`https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${NEIS_API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${user.officeCode}&SD_SCHUL_CODE=${user.schoolCode}&MLSV_YMD=${today}`);
+ const data=await res.json();
 
- meal.innerHTML=md.mealServiceDietInfo
- ? cleanMeal(md.mealServiceDietInfo[1].row[0].DDISH_NM).replace(/\n/g,"<br>")
+ meal.innerHTML=data.mealServiceDietInfo
+ ? cleanMeal(data.mealServiceDietInfo[1].row[0].DDISH_NM).replace(/\n/g,"<br>")
  : "없음";
 }
 
-// 주간 날짜
-function getWeek(){
- const now=new Date();
- now.setDate(now.getDate()+weekOffset*7);
- const monday=new Date(now.setDate(now.getDate()-now.getDay()+1));
+// 공유
+function openShare(){shareModal.style.display="block";}
+function closeShare(){shareModal.style.display="none";}
 
- let arr=[];
- for(let i=0;i<5;i++){
-  const d=new Date(monday);
-  d.setDate(monday.getDate()+i);
-  arr.push(d.toISOString().slice(0,10).replace(/-/g,''));
- }
- return arr;
-}
-
-// 주간 급식
-async function toggleMeal(){
- if(mealOpen){weekMeal.innerHTML="";mealOpen=false;return;}
- mealOpen=true;
- loadWeekMeal();
-}
-
-async function loadWeekMeal(){
- let html=`<button class="btn sub-btn" onclick="changeWeek(-1)">◀</button>
-           <button class="btn sub-btn" onclick="changeWeek(1)">▶</button>`;
-
- for(let d of getWeek()){
-  const res=await fetch(`https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${NEIS_API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${user.officeCode}&SD_SCHUL_CODE=${user.schoolCode}&MLSV_YMD=${d}`);
-  const data=await res.json();
-
-  let text="없음";
-  if(data.mealServiceDietInfo){
-   text=cleanMeal(data.mealServiceDietInfo[1].row[0].DDISH_NM);
-  }
-
-  html+=`<div class="week-card">
-  <b>${d.slice(4,6)}/${d.slice(6)}</b><br>
-  ${text.replace(/\n/g,"<br>")}
-  </div>`;
- }
- weekMeal.innerHTML=html;
-}
-
-function changeWeek(n){
- weekOffset+=n;
- loadWeekMeal();
-}
-
-// 카톡
 function shareToday(){
  Kakao.Share.sendDefault({
   objectType:'text',
-  text:`${user.schoolName}\n오늘 급식 🍱\n\n${meal.innerText}`,
+  text:`${user.schoolName}\n오늘 급식\n\n${meal.innerText}`,
   link:{mobileWebUrl:location.origin,webUrl:location.origin}
  });
 }
@@ -282,14 +179,59 @@ function toggleDark(){
 }
 
 // 마이페이지
-function openMy(){mypage.style.display="block";}
+function openMy(){
+ mypage.style.display="block";
+ editNick.value=user.nickname;
+ schoolInput.value=user.schoolName;
+}
+
 function closeMy(){mypage.style.display="none";}
 
-async function updateProfile(){
- await db.collection("users").doc(localStorage.getItem("loginUser")).update({
-  nickname:editNick.value
+// 학년/반
+function initSelect(){
+ for(let i=1;i<=6;i++) editGrade.innerHTML+=`<option>${i}</option>`;
+ for(let i=1;i<=15;i++) editClass.innerHTML+=`<option>${i}</option>`;
+}
+
+// 🔥 학교 검색
+schoolInput.addEventListener("input", async ()=>{
+ const keyword=schoolInput.value;
+ if(keyword.length<2) return;
+
+ const res=await fetch(`https://open.neis.go.kr/hub/schoolInfo?KEY=${NEIS_API_KEY}&Type=json&SCHUL_NM=${keyword}`);
+ const data=await res.json();
+
+ schoolList.innerHTML="";
+
+ if(!data.schoolInfo) return;
+
+ data.schoolInfo[1].row.forEach(s=>{
+  const div=document.createElement("div");
+  div.innerText=`${s.SCHUL_NM} (${s.LCTN_SC_NM})`;
+
+  div.onclick=()=>{
+   selectedSchool=s;
+   schoolInput.value=s.SCHUL_NM;
+   schoolList.innerHTML="";
+  };
+
+  schoolList.appendChild(div);
  });
- alert("수정 완료");
+});
+
+// 저장
+async function saveMy(){
+ await db.collection("users").doc(localStorage.getItem("loginUser")).update({
+  nickname:editNick.value,
+  schoolName:selectedSchool?.SCHUL_NM || user.schoolName,
+  schoolCode:selectedSchool?.SD_SCHUL_CODE || user.schoolCode,
+  officeCode:selectedSchool?.ATPT_OFCDC_SC_CODE || user.officeCode,
+  grade:editGrade.value,
+  classNum:editClass.value
+ });
+
+ alert("저장 완료");
+ location.reload();
 }
 
 function logout(){
@@ -297,6 +239,5 @@ function logout(){
  location.href="login.html";
 }
 </script>
-
 </body>
 </html>
