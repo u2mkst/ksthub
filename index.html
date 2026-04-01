@@ -35,7 +35,7 @@ body{margin:0;font-family:Pretendard;background:var(--bg);color:var(--text);}
 .week-card{font-size:13px;padding:10px;margin-top:8px;border-radius:10px;background:#eef5ff;}
 .dark .week-card{background:#1e293b;}
 
-.floating{position:fixed;bottom:20px;width:55px;height:55px;border-radius:50%;display:flex;align-items:center;justify-content:center;}
+.floating{position:fixed;bottom:20px;width:55px;height:55px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;}
 .share-btn{left:20px;background:#fee500;}
 .dark-btn{right:20px;background:#111;color:white;}
 
@@ -67,6 +67,15 @@ input,select{
 <div class="card">
 <h4>🍱 오늘 급식</h4>
 <div id="meal"></div>
+<button class="btn sub-btn" onclick="toggleMeal()">자세히 보기</button>
+<div id="weekMeal"></div>
+</div>
+
+<div class="card">
+<h4>📚 오늘 시간표</h4>
+<div id="timetable"></div>
+<button class="btn sub-btn" onclick="toggleTime()">자세히 보기</button>
+<div id="weekTime"></div>
 </div>
 
 <div class="card">
@@ -124,13 +133,16 @@ const NEIS_API_KEY="19f78fd07bfb4243a6333e7bf4641bfc";
 Kakao.init("1074f182720545c67909372a924b23bb");
 
 let user, selectedSchool=null;
+let mealOpen=false, timeOpen=false, weekOffset=0;
 
-// 다크모드 저장
+// 다크모드
 if(localStorage.getItem("dark")=="1") document.body.classList.add("dark");
 
 // 급식 정리
 function cleanMeal(t){
- return t.replace(/<br\/>/g,"\n").replace(/\([0-9.]+\)/g,"").replace(/[0-9.]/g,"");
+ return t.replace(/<br\/>/g,"\n")
+         .replace(/\([0-9.]+\)/g,"")
+         .replace(/[0-9.]/g,"");
 }
 
 // 로그인 체크
@@ -144,11 +156,12 @@ window.onload=async()=>{
  welcome.innerText=user.nickname+"님 반가워요";
  schoolInfo.innerText=`${user.schoolName} ${user.grade}학년 ${user.classNum}반`;
 
- loadToday();
  initSelect();
+ loadToday();
+ loadTodayTime();
 };
 
-// 급식
+// 오늘 급식
 async function loadToday(){
  const today=new Date().toISOString().slice(0,10).replace(/-/g,'');
 
@@ -160,10 +173,108 @@ async function loadToday(){
  : "없음";
 }
 
+// 시간표 타입
+function getTimeType(){
+ if(user.gradeType==="초등") return "elsTimetable";
+ if(user.gradeType==="중등") return "misTimetable";
+ return "hisTimetable";
+}
+
+// 오늘 시간표
+async function loadTodayTime(){
+ const today=new Date().toISOString().slice(0,10).replace(/-/g,'');
+ const type=getTimeType();
+
+ const res=await fetch(`https://open.neis.go.kr/hub/${type}?KEY=${NEIS_API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${user.officeCode}&SD_SCHUL_CODE=${user.schoolCode}&ALL_TI_YMD=${today}&GRADE=${user.grade}&CLASS_NM=${user.classNum}`);
+ const data=await res.json();
+
+ timetable.innerHTML=data[type]
+  ? data[type][1].row.map(r=>`${r.PERIO}교시 - ${r.ITRT_CNTNT}`).join("<br>")
+  : "없음";
+}
+
+// 주간 날짜
+function getWeekDates(){
+ const now=new Date();
+ now.setDate(now.getDate()+weekOffset*7);
+ const monday=new Date(now.setDate(now.getDate()-now.getDay()+1));
+
+ let arr=[];
+ for(let i=0;i<5;i++){
+  const d=new Date(monday);
+  d.setDate(monday.getDate()+i);
+  arr.push(d.toISOString().slice(0,10).replace(/-/g,''));
+ }
+ return arr;
+}
+
+// 주간 급식
+async function toggleMeal(){
+ if(mealOpen){weekMeal.innerHTML="";mealOpen=false;return;}
+ mealOpen=true;
+ loadWeekMeal();
+}
+
+async function loadWeekMeal(){
+ let html=`<button onclick="changeWeek(-1)">◀</button>
+           <button onclick="changeWeek(1)">▶</button>`;
+
+ for(let d of getWeekDates()){
+  const res=await fetch(`https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${NEIS_API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${user.officeCode}&SD_SCHUL_CODE=${user.schoolCode}&MLSV_YMD=${d}`);
+  const data=await res.json();
+
+  let text="없음";
+  if(data.mealServiceDietInfo){
+   text=cleanMeal(data.mealServiceDietInfo[1].row[0].DDISH_NM);
+  }
+
+  html+=`<div class="week-card">
+   <b>${d.slice(4,6)}/${d.slice(6)}</b><br>
+   ${text.replace(/\n/g,"<br>")}
+  </div>`;
+ }
+ weekMeal.innerHTML=html;
+}
+
+// 주간 시간표
+async function toggleTime(){
+ if(timeOpen){weekTime.innerHTML="";timeOpen=false;return;}
+ timeOpen=true;
+ loadWeekTime();
+}
+
+async function loadWeekTime(){
+ const type=getTimeType();
+
+ let html=`<button onclick="changeWeek(-1)">◀</button>
+           <button onclick="changeWeek(1)">▶</button>`;
+
+ for(let d of getWeekDates()){
+  const res=await fetch(`https://open.neis.go.kr/hub/${type}?KEY=${NEIS_API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${user.officeCode}&SD_SCHUL_CODE=${user.schoolCode}&ALL_TI_YMD=${d}&GRADE=${user.grade}&CLASS_NM=${user.classNum}`);
+  const data=await res.json();
+
+  let text="없음";
+  if(data[type]){
+   text=data[type][1].row.map(r=>`${r.PERIO}교시 ${r.ITRT_CNTNT}`).join("<br>");
+  }
+
+  html+=`<div class="week-card">
+   <b>${d.slice(4,6)}/${d.slice(6)}</b><br>${text}
+  </div>`;
+ }
+ weekTime.innerHTML=html;
+}
+
+// 주 이동
+function changeWeek(n){
+ weekOffset+=n;
+ if(mealOpen) loadWeekMeal();
+ if(timeOpen) loadWeekTime();
+}
+
 // 공유
 function openShare(){shareModal.style.display="block";}
 function closeShare(){shareModal.style.display="none";}
-
 function shareToday(){
  Kakao.Share.sendDefault({
   objectType:'text',
@@ -184,16 +295,14 @@ function openMy(){
  editNick.value=user.nickname;
  schoolInput.value=user.schoolName;
 }
-
 function closeMy(){mypage.style.display="none";}
 
-// 학년/반
 function initSelect(){
  for(let i=1;i<=6;i++) editGrade.innerHTML+=`<option>${i}</option>`;
  for(let i=1;i<=15;i++) editClass.innerHTML+=`<option>${i}</option>`;
 }
 
-// 🔥 학교 검색
+// 학교 검색
 schoolInput.addEventListener("input", async ()=>{
  const keyword=schoolInput.value;
  if(keyword.length<2) return;
@@ -202,7 +311,6 @@ schoolInput.addEventListener("input", async ()=>{
  const data=await res.json();
 
  schoolList.innerHTML="";
-
  if(!data.schoolInfo) return;
 
  data.schoolInfo[1].row.forEach(s=>{
